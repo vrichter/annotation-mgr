@@ -13,6 +13,7 @@ local mp = require 'mp'
 local assdraw = require 'mp.assdraw'
 local utils = require 'mp.utils'
 local msg = require 'mp.msg'
+local Person = require 'person'
 
 -- data
 local _properties = {}
@@ -38,87 +39,6 @@ function dump(o)
     else
        return tostring(o)
     end
-end
-
--- classes
-local Annotations = {}
-function Annotations:new(o)
-    o = o or {}
-    setmetatable(o, self)
-    self.__index = self
-    o.data = {}
-    return o
-end
-function Annotations:add(time,value)
-    if not self.data[time] then
-        self.data[time] = value
-    else
-        for k,v in pairs(value) do
-            self.data[time][k] = v
-        end
-    end
-end
-function Annotations:get_entry(time)
-    return self.data[time]
-end
-function Annotations:find_neighbours(time)
-    local less_dist = nil
-    local lessval = nil
-    local more_dist = nil
-    local moreval = nil
-    for key, value in pairs(self.data) do
-        if key < time then
-            if (not less_dist) or (time-key < less_dist) then
-                less_dist = time-key
-                lessval = value
-            end
-        else
-            if (not more_dist) or (key-time < more_dist) then
-                more_dist = key-time
-                moreval = value
-            end
-        end
-    end
-    return lessval, moreval, less_dist, more_dist
-end
-
-local Person = {_max_id=1}
-function Person:new(o)
-    o = o or {}
-    setmetatable(o, self)
-    self.__index = self
-    o['id'] = Person._max_id
-    o.annotations = Annotations:new()
-    Person._max_id  = Person._max_id+1
-    return o
-end
-function Person:add_annotation(time,x_postition,y_position)
-    self.annotations:add(time,{x=x_postition,y=y_position})
-end
-function Person:interpolate(p,n,dt_before,dt_after)
-    local px = p.x
-    local py = p.y
-    local nx = n.x
-    local ny = n.y
-    local vx = (nx-px)/(dt_before+dt_after)
-    local vy = (ny-py)/(dt_before+dt_after)
-    return { x=(px+vx*dt_before), y=(py+vy*dt_before) }
-end
-function Person:current_position(time)
-    local time = time or _property_time
-    local entry = self.annotations:get_entry(time)
-    if not (entry == nil) then
-        return entry, false
-    end
-    -- need to interpolate
-    local previous, next, dt_before, dt_after = self.annotations:find_neighbours(time)
-    if (not previous) or (previous.lost == true) then
-        return next, true
-    end
-    if (not next) or (next.lost == true) then
-        return previous, true
-    end
-    return self:interpolate(previous,next,dt_before,dt_after), true
 end
 
 -- property watchers
@@ -290,7 +210,7 @@ end
 function draw_person_positions(ass)
     local size = tr_video_to_px_scale(opts.position_size)/2
     for key, person in pairs(_persons) do
-        local position, interpolated = person:current_position()
+        local position, interpolated = person:position(_property_time)
         print('po',position,interpolated)
         if position then
             local color = {border = opts.person_pos_color_border}
@@ -351,9 +271,9 @@ function find_annotation_next_to_mouse(mx,my,max_dist)
     local next = nil
     local min_dist = nil
     for key,person in pairs(_persons) do
-        local person_pos = person:current_position()
+        local person_pos = person:position(_property_time)
         if not (person_pos == nil) then
-            local vx, vy = tr_person_to_video(person:current_position())
+            local vx, vy = tr_person_to_video(person_pos)
             local dist = calculate_dist(mvx, mvy, vx, vy)
             if min_dist == nil or dist < min_dist then
                 min_dist = dist
