@@ -1,120 +1,51 @@
 -- config
 local opts = {
-    position_size = 50,
-    person_pos_color_annotation = '#268f2666',
-    person_pos_color_interpolated = '#26268f66',
-    person_pos_color_selected = '#8f262666',
-    person_pos_color_border = '#000000',
     person_tracking_file = "persontracking.json-",
 }
 (require 'mp.options').read_options(opts,"annotation")
 
 local mp = require 'mp'
-local assdraw = require 'mp.assdraw'
 local utils = require 'mp.utils'
 local msg = require 'mp.msg'
 local Person = require 'person'
+local Gui = require 'gui'
+local dump = require 'dump'
 
--- data
-local _properties = {}
-local _property_time = nil
-local _annotations = {}
-local _person_tracking = {}
-local _persons = {}
+-- local data
+_data = {
+    path = "",
+    dir = "",
+    ready = false,
+    time = 0,
+    persons = {}
+}
+_gui = Gui:new()
 
--- gui state
-local _ready = false
-local _gui_marked_person = nil
-
--- helper functions
-function dump(o)
-    -- thanks to https://stackoverflow.com/questions/9168058/how-to-dump-a-table-to-console
-    if type(o) == 'table' then
-       local s = '{ '
-       for k,v in pairs(o) do
-          if type(k) ~= 'number' then k = '"'..k..'"' end
-          s = s .. '['..k..'] = ' .. dump(v) .. ','
-       end
-       return s .. '} '
-    else
-       return tostring(o)
-    end
-end
-
--- property watchers
-function observe_property(name, data)
-    if data == nil then
-        data = mp.get_property_native(name)
-    end
-    return data
-end
-function observe_video_w(name, data)
-    _properties['video-w'] = observe_property(name,data)
-end
-function observe_video_h(name, data)
-    _properties['video-h'] = observe_property(name,data)
-end
-function observe_osd_w(name, data)
-    _properties['osd-w'] = observe_property(name,data)
-    update_video_position()
-end
-function observe_osd_h(name, data)
-    _properties['osd-h'] = observe_property(name,data)
-    update_video_position()
-end
+-- watch which file is opened. load corresponding data if necessary
 function observe_path(name, data)
-    local path = observe_property(name,data)
-    if path == _properties['path'] then
+    local path = mp.get_property_native(name)
+    if path == nil then
+      msg.warn('path is nil')
+      return
+    end
+    if path == _data.path then
         return
     else
-        _properties['path'] = path
+        _data.path = path
     end
-    _ready = false
+    _data.ready = false
     local dir, file = utils.split_path(path)
-    if not (_properties['dir'] == dir) then
+    if not (_data.dir == dir) then
         msg.info('directory changed to:',dir)
-        _properties['dir'] = dir
+        _data.dir = dir
         load_config_from_dir(dir)
     end
-    if not (_properties['file'] == file) then
-        _properties['file'] = file
+    if not (_data.file == file) then
+        _data.file = file
         update_config_for_file(dir,file)
     end
-    _ready = true
+    _data.ready = true
 end
-function observe_time(name,data)
-    local time = observe_property(name,data)
-    if not (_property_time == time) then
-        msg.trace("time changed:",time)
-        _property_time = time
-        render_gui()
-    end
-end
-mp.observe_property("dwidth", native, observe_video_w)
-mp.observe_property("dheight", native, observe_video_h)
-mp.observe_property("osd-width", native, observe_osd_w)
-mp.observe_property("osd-height", native, observe_osd_h)
-mp.observe_property("path", native, observe_path)
-mp.observe_property("time-pos", native, observe_time)
-
-function update_video_position()
-    local ww = _properties['osd-w']
-    local wh = _properties['osd-h']
-    local vw = _properties['video-w']
-    local vh = _properties['video-h']
-    if ww == nil  or wh == nil or  vw == nil or vh == nil then
-        return
-    end
-    local scale=ww/vw
-    if wh/vh < scale then
-        scale = wh/vh
-    end
-    _properties['video-x'] = (ww-(vw*scale))/2
-    _properties['video-y'] = (wh-(vh*scale))/2
-    _properties['video-scale'] = scale
-    render_gui()
-end
-
 function load_person_tracking(dir)
     local person_path = dir .. opts.person_tracking_file
     local info = utils.file_info(person_path)
@@ -130,151 +61,59 @@ function load_person_tracking(dir)
     msg.info('parsing to json done.')
     return parsed
 end
-
 function load_config_from_dir(dir)
     local pause_state = mp.get_property_native('pause')
     msg.info('pausing for config load')
-    render_text_only('paused for loading annotations. please wait a moment.')
+    _gui:update_data('paused for loading annotations. please wait a moment.')
     mp.set_property_native('pause',true)
     msg.info('loading configuration from:',dir)
     local pt = load_person_tracking(dir)
     if not pt == nil then
-        _person_tracking = pt
+        _data.person_tracking = pt
     end
+    _gui:update_data(_data.person)
     mp.set_property_native('pause',pause_state)
 end
-
 function update_config_for_file(path,file)
     msg.info('update config for file not implemented. path:',path,' file:',file)
 end
+mp.observe_property("path", native, observe_path)
 
--- transformations
-function tr_px_to_video(x,y)
-    -- first remove padding, then scale with video scale
-    return (x-_properties['video-x'])/_properties['video-scale'], (y-_properties['video-y'])/_properties['video-scale']
+-- update model
+function data_insert_person(person)
+    table.insert(_data.persons,person)
+    _gui:update_data(_data.persons)
 end
-function tr_video_to_px(x,y)
-    -- scale with video scale, then add padding
-    return x*_properties['video-scale']+_properties['video-x'], y*_properties['video-scale']+_properties['video-y']
+function data_remove_person(person)
+    table.remove(_data.persons,person)
+    _gui:update_data(_data.persons)
 end
-function tr_video_to_px_scale(x)
-    return x*_properties['video-scale']
-end
-function tr_person_to_video(person)
-    return person['x'], person['y']
-end
-function tr_person_to_px(person)
-    return tr_video_to_px(tr_person_to_video(person))
-end
-function calculate_dist(ax,ay,bx,by)
-    return math.sqrt(math.abs((bx-ax)^2-(by-ay)^2))
+function data_add_annotation(id,time,x,y)
+    _data.persons[id]:add_annotation(time,x,y)
+    _gui:update_data(_data.persons)
 end
 
--- render functions
-Asstools = {}
-function Asstools.hex_rgb2bgr(hex)
-    if not hex then return nil, nil end
-    print('before: ',hex)
-    hex = hex:match("^#?([1-9a-fA-F]+)$")
-    print('after: ',hex)
-    if not hex then return nil, nil end
-    assert((string.len(hex) == 6) or (string.len(hex) == 8))
-    color = string.sub(hex,5,6) .. string.sub(hex,3,4) .. string.sub(hex,1,2)
-    alpha = nil
-    if string.len(hex) == 8 then
-        alpha = string.sub(hex,7,8)
-    end
-    print('result:',color,alpha)
-    return color, alpha
-end
-function Asstools.create_color_from_hex(color)
-    local gc = function(num,hex)
-        local c,a = Asstools.hex_rgb2bgr(hex)
-        local result = ''
-        if c then
-            result = result .. '{\\' .. num .. 'c&H' .. c .. '&}'
-        end
-        if a then
-            result = result .. '{\\' .. num .. 'a&H' .. a .. '&}'
-        end
-        return result
-    end
-    local result = ''
-    result = result .. gc(1,color.primary)
-    result = result .. gc(2,color.secondary)
-    result = result .. gc(3,color.border)
-    result = result .. gc(4,color.shadow)
-    return result
-end
-
-function draw_person_positions(ass)
-    local size = tr_video_to_px_scale(opts.position_size)/2
-    for key, person in pairs(_persons) do
-        local position, interpolated = person:position(_property_time)
-        print('po',position,interpolated)
-        if position then
-            local color = {border = opts.person_pos_color_border}
-            if _gui_marked_person and (person.id == _gui_marked_person.id) then
-                print('color selected')
-                color.primary = opts.person_pos_color_selected
-            elseif interpolated then
-                print('color interpolated')
-                color.primary = opts.person_pos_color_interpolated
-            else
-                color.primary = opts.person_pos_color_annotation
-            end
-            local px, py = tr_person_to_px(position)
-            ass:new_event()
-            ass:append(Asstools.create_color_from_hex(color))
-            ass:pos(0,0)
-            ass:draw_start()
-            ass:rect_cw(px-size, py-size, px+size, py+size)
-        end
-    end
-    ass:draw_stop()
-end
-
-function draw_tracking_positions(ass)
-
-end
-
-function render_text_only(text)
-    local ass = assdraw.ass_new()
-    ass:pos(0,0)
-    ass:append(text)
-    mp.set_osd_ass(_properties['osd-w'], _properties['osd-h'], ass.text)
-end
-
-function render_clean()
-    local ass = assdraw.ass_new()
-    mp.set_osd_ass(_properties['osd-w'], _properties['osd-h'], ass.text)
-end
-
-function render_gui()
-    local ass = assdraw.ass_new()
-    draw_person_positions(ass)
-    draw_tracking_positions(ass)
-    mp.set_osd_ass(_properties['osd-w'], _properties['osd-h'], ass.text)
-end
-
--- gui functions
-function add_person_annotation(mx,my)
-    local vx, vy = tr_px_to_video(mx,my)
+-- add, move, remove annotations from gui callbacks
+function add_person_annotation(vx,vy)
+    assert(vx)
+    assert(vy)
     local person = Person:new()
-    person:add_annotation(_property_time,vx,vy)
-    msg.info('created a new person with position position',dump(person))
-    table.insert(_persons,person)
-    render_gui()
+    person:add_annotation(_data.time,vx,vy)
+    msg.info('created a new person with position',dump(person))
+    data_insert_person(person)
 end
-function find_annotation_next_to_mouse(mx,my,max_dist)
-    local mvx,mvy = tr_px_to_video(mx,my)
+function find_annotation_next_to(vx,vy,max_dist)
+    assert(vx)
+    assert(vy)
+    assert(max_dist)
     local next = nil
     local min_dist = nil
-    for key,person in pairs(_persons) do
-        local person_pos = person:position(_property_time)
+    local time = _data.time
+    for key, person in pairs(_data.persons) do
+        local person_pos = person:position(time)
         if not (person_pos == nil) then
-            local vx, vy = tr_person_to_video(person_pos)
-            local dist = calculate_dist(mvx, mvy, vx, vy)
+            local pvx, pvy = _gui:tr_person_to_video(person_pos)
+            local dist = _gui:calculate_dist(vx, vy, pvx, pvy)
             if min_dist == nil or dist < min_dist then
                 min_dist = dist
                 next = person
@@ -287,57 +126,55 @@ function find_annotation_next_to_mouse(mx,my,max_dist)
         return next
     end
 end
-function remove_person_annotation(mx,my)
-    local mvx,mvy = tr_px_to_video(mx,my)
-    local next = nil
-    local min_dist = nil
-    for key,person in pairs(_persons) do
-        local vx, vy = tr_person_to_video(person)
-        local dist = calculate_dist(mvx, mvy, vx, vy)
-        if min_dist == nil or dist < min_dist then
-            min_dist = dist
-            next  = key
-        end
-    end
-    table.remove(_persons,next)
-    render_gui()
+function remove_person_annotation(vx,vy)
+    assert(vx)
+    assert(vy)
+    local next = find_annotation_next_to(vx,vy,_gui.opts.position_size/2)
+    data_remove_person(next)
 end
-function ctrl_left_click_handler(event)
-    if not _ready then return end
-    local mx, my = mp.get_mouse_pos()
-    print('mouse:',dump(event))
-    add_person_annotation(mx,my)
-end
-
-function left_click_handler(event)
-    if not _ready then return end
-    local mx, my = mp.get_mouse_pos()
-    print('mouse:',dump(event))
-    if _gui_marked_person then
+function select_or_move_person(vx, vy)
+    assert(vx)
+    assert(vy)
+    if _gui.marked_person then
         -- move marked person
         print('persons: ',dump(_persons))
-        _persons[_gui_marked_person.id]:add_annotation(_property_time, tr_px_to_video(mx,my))
-        _gui_marked_person = nil
+        data_add_annotation(_gui.marked_person.id,_data.time,vx,vy)
+        _gui.marked_person = nil
     else
         -- mark person
-        _gui_marked_person = find_annotation_next_to_mouse(mx,my,opts.position_size/2)
+        _gui.marked_person = find_annotation_next_to(vx,vy,_gui.opts.position_size/2)
     end
-    render_gui()
 end
 
-function right_click_handler(event)
-    if not _ready then return end
-    local mx, my = mp.get_mouse_pos()
-    remove_person_annotation(mx,my)
+
+function ctrl_left_click_handler(vx,vy,event)
+    add_person_annotation(vx,vy)
+end
+function left_click_handler(vx,vy,event)
+    select_or_move_person(vx,vy)
+end
+function right_click_handler(vx,vy,event)
+    remove_person_annotation(vx,vy)
 end
 
-function on_tick()
+function if_ready(f)
+    return function(...)
+        if _data.ready then
+            f(...)
+        else
+            return
+        end
+    end
+end
+
+--function on_tick()
     --msg.info("tick was triggered")
     --msg.info('time in tick:',mp.get_property_native('time-pos'))
-end
+--end
 
 --mp.add_key_binding("MBTN_LEFT", "", left_click_handler, { complex = true })
-mp.add_key_binding("Ctrl+MBTN_LEFT", "ctrl_left_click_handler", ctrl_left_click_handler)
-mp.add_key_binding("MBTN_LEFT", "left_click_handler", left_click_handler)
-mp.add_key_binding("MBTN_RIGHT", "right_click_handler", right_click_handler)
-mp.register_event("tick", on_tick)
+_gui:add_mouse_binding("Ctrl+MBTN_LEFT", "ctrl_left_click_handler", if_ready(ctrl_left_click_handler))
+_gui:add_mouse_binding("MBTN_LEFT", "left_click_handler", if_ready(left_click_handler))
+_gui:add_mouse_binding("MBTN_RIGHT", "right_click_handler", if_ready(right_click_handler))
+_gui:add_time_binding(function(time) _data.time = time end)
+--mp.register_event("tick", on_tick)
