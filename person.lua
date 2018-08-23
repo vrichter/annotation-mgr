@@ -1,4 +1,5 @@
 local Annotations = require "annotations"
+local dump = require "dump"
 
 local Person = {_max_id=1}
 function Person:new(o)
@@ -11,9 +12,15 @@ function Person:new(o)
     return o
 end
 function Person:add_annotation(time,x_postition,y_position)
+    assert(x_postition)
+    assert(y_position)
     self.annotations:add(time,{x=x_postition,y=y_position})
 end
 function Person:interpolate(p,n,dt_before,dt_after)
+    assert(p)
+    assert(n)
+    assert(dt_before)
+    assert(dt_after)
     local px = p.x
     local py = p.y
     local nx = n.x

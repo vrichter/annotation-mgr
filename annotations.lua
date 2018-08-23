@@ -1,4 +1,6 @@
 -- This module provides the annotations class
+local dump = require 'dump'
+
 local Annotations = {}
 function Annotations:new(o)
     o = o or {}
@@ -7,7 +9,10 @@ function Annotations:new(o)
     o.data = {}
     return o
 end
-function Annotations:add(time,value)
+function Annotations:add(time,value,nextvalue)
+    assert(time)
+    assert(value)
+    print('time',time,'value',dump(value))
     if not self.data[time] then
         self.data[time] = value
     else
