@@ -85,13 +85,19 @@ function data_insert_person(person)
     _gui:update_data(_data.persons)
 end
 function data_remove_person(person)
-    table.remove(_data.persons,person)
+    table.remove(_data.persons)
     _gui:update_data(_data.persons)
 end
 function data_add_annotation(id,time,x,y)
     _data.persons[id]:add_annotation(time,x,y)
     _gui:update_data(_data.persons)
 end
+function data_remove_annotation(id,time)
+    print('p',_data.persons,'id',id,'pid',_data.persons[id],'t',time)
+    _data.persons[id]:remove_annotation(time)
+    _gui:update_data(_data.persons)
+end
+
 
 -- add, move, remove annotations from gui callbacks
 function add_person_annotation(vx,vy)
@@ -130,7 +136,9 @@ function remove_person_annotation(vx,vy)
     assert(vx)
     assert(vy)
     local next = find_annotation_next_to(vx,vy,_gui.opts.position_size/2)
-    data_remove_person(next)
+    if next then
+        data_remove_annotation(next.id,_data.time)
+    end
 end
 function select_or_move_person(vx, vy)
     assert(vx)

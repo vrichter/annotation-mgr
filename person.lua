@@ -12,9 +12,14 @@ function Person:new(o)
     return o
 end
 function Person:add_annotation(time,x_postition,y_position)
+    assert(time)
     assert(x_postition)
     assert(y_position)
     self.annotations:add(time,{x=x_postition,y=y_position})
+end
+function Person:remove_annotation(time)
+    assert(time)
+    self.annotations:remove(time)
 end
 function Person:interpolate(p,n,dt_before,dt_after)
     assert(p)

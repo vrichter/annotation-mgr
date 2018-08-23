@@ -21,6 +21,13 @@ function Annotations:add(time,value,nextvalue)
         end
     end
 end
+function Annotations:remove(time)
+    assert(time)
+    print('before',dump(self.data))
+    --table.remove(self.data,time)
+    self.data[time]=nil
+    print('after',dump(self.data))
+end
 function Annotations:get_entry(time)
     return self.data[time]
 end
