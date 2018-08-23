@@ -220,15 +220,11 @@ function Gui:render_persons(persons)
 end
 
 function Gui:render_gui()
-    print('self',self,'set data:',dump(self.data))
     if not self.data then
-        msg.info("render: clean")
         self:render_clean()
     elseif type(self.data) == 'string' then
-        msg.info("render: text")
         self:render_text_only(self.data)
     else 
-        msg.info("render: persons")
         self:render_persons(self.data)
     end
 end
@@ -236,7 +232,6 @@ end
 function Gui:on_tick()
     --msg.info("tick was triggered")
     if self.modified then
-        msg.info("modified: true",self)
         self:render_gui()
         self.modified = false
     end        
