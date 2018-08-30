@@ -134,6 +134,24 @@ end
 function Gui:tr_person_to_px(person)
     return self:tr_video_to_px(self:tr_person_to_video(person))
 end
+function Gui:tr_rotation_from_points_rad(x_center, y_center, x_dir, y_dir)
+    local xd = x_center-x_dir
+    local yd = y_center-y_dir
+    local norm = math.sqrt((xd^2)+(yd^2))
+    xd = xd/norm
+    yd = yd/norm
+    xz = 0
+    yz = 1
+    local angle = - (math.atan2(yd,xd) - math.atan2(yz,xz))
+    print(angle)
+    return angle
+end
+function Gui:tr_person_to_rotation_rad(person)
+    return person.rad
+end
+function Gui:tr_person_to_rotation_deg(person)
+    return person.rad*180/math.pi
+end
 function Gui:calculate_dist(ax,ay,bx,by)
     return math.sqrt(math.abs((bx-ax)^2-(by-ay)^2))
 end
@@ -187,10 +205,20 @@ function Gui:draw_person_positions(ass,persons)
             end
             local px, py = self:tr_person_to_px(position)
             ass:new_event()
+            ass:append('{\\org('..px..','..py..')}')
+            ass:append('{\\frz'..self:tr_person_to_rotation_deg(position)..'}')
             ass:append(self:asstools_create_color_from_hex(color))
             ass:pos(0,0)
             ass:draw_start()
-            ass:rect_cw(px-size, py-size, px+size, py+size)
+            --ass:rect_cw(px-size, py-size, px+size, py+size)
+            ass:move_to(px-size,py)
+            ass:line_to(px,py-2*size) 
+            ass:line_to(px+size,py)
+
+            --ass:move_to(x0, y0)
+            --ass:line_to(x0, y1)
+            --ass:line_to(x1, y1)
+            --ass:line_to(x1, y0)
         end
     end
     ass:draw_stop()

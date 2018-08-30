@@ -88,8 +88,16 @@ function data_remove_person(person)
     table.remove(_data.persons)
     _gui:update_data(_data.persons)
 end
-function data_add_annotation(id,time,x,y)
-    _data.persons[id]:add_annotation(time,x,y)
+function data_add_annotation(id,time,x,y,r)
+    print('add annotation:',id,time,x,y,r)
+    local current = _data.persons[id]:position(time)
+    if current then
+        x = x or current.x
+        y = y or current.y
+        r = r or current.rad
+    end
+    print('current:',dump(current),'r',r)
+    _data.persons[id]:add_annotation(time,x,y,r)
     _gui:update_data(_data.persons)
 end
 function data_remove_annotation(id,time)
@@ -140,29 +148,44 @@ function remove_person_annotation(vx,vy)
         data_remove_annotation(next.id,_data.time)
     end
 end
-function select_or_move_person(vx, vy)
+function move_person(vx, vy)
     assert(vx)
     assert(vy)
+    data_add_annotation(_gui.marked_person.id,_data.time,vx,vy)
+end
+function rotate_person(vx, vy)
+    assert(vx)
+    assert(vy)
+    local position = _gui.marked_person:position(_data.time)
+    local rad = _gui:tr_rotation_from_points_rad(position.x,position.y,vx,vy)
+    -- rotate marked person
+    data_add_annotation(_gui.marked_person.id,_data.time,position.x,position.y,rad)
+end
+
+function select_or(f,vx,vy,...)
     if _gui.marked_person then
-        -- move marked person
-        print('persons: ',dump(_persons))
-        data_add_annotation(_gui.marked_person.id,_data.time,vx,vy)
+        -- call function and unmark person
+        f(vx,vy,...)
         _gui.marked_person = nil
+        _gui.modified = true
     else
         -- mark person
         _gui.marked_person = find_annotation_next_to(vx,vy,_gui.opts.position_size/2)
+        _gui.modified = true
     end
 end
-
 
 function ctrl_left_click_handler(vx,vy,event)
     add_person_annotation(vx,vy)
 end
+function ctrl_right_click_handler(vx,vy,event)
+    remove_person_annotation(vx,vy)
+end
 function left_click_handler(vx,vy,event)
-    select_or_move_person(vx,vy)
+    select_or(move_person,vx,vy)
 end
 function right_click_handler(vx,vy,event)
-    remove_person_annotation(vx,vy)
+    select_or(rotate_person,vx,vy)
 end
 
 function if_ready(f)
@@ -182,6 +205,7 @@ end
 
 --mp.add_key_binding("MBTN_LEFT", "", left_click_handler, { complex = true })
 _gui:add_mouse_binding("Ctrl+MBTN_LEFT", "ctrl_left_click_handler", if_ready(ctrl_left_click_handler))
+_gui:add_mouse_binding("Ctrl+MBTN_RIGHT", "ctrl_right_click_handler", if_ready(ctrl_right_click_handler))
 _gui:add_mouse_binding("MBTN_LEFT", "left_click_handler", if_ready(left_click_handler))
 _gui:add_mouse_binding("MBTN_RIGHT", "right_click_handler", if_ready(right_click_handler))
 _gui:add_time_binding(function(time) _data.time = time end)

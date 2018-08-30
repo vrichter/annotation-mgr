@@ -11,11 +11,12 @@ function Person:new(o)
     Person._max_id  = Person._max_id+1
     return o
 end
-function Person:add_annotation(time,x_postition,y_position)
+function Person:add_annotation(time,x_postition,y_position,rotation_radian)
     assert(time)
     assert(x_postition)
     assert(y_position)
-    self.annotations:add(time,{x=x_postition,y=y_position})
+    rotation_radian = rotation_radian or 0
+    self.annotations:add(time,{x=x_postition,y=y_position,rad=rotation_radian})
 end
 function Person:remove_annotation(time)
     assert(time)
@@ -30,9 +31,12 @@ function Person:interpolate(p,n,dt_before,dt_after)
     local py = p.y
     local nx = n.x
     local ny = n.y
+    local pa = p.rad
+    local na = n.rad
     local vx = (nx-px)/(dt_before+dt_after)
     local vy = (ny-py)/(dt_before+dt_after)
-    return { x=(px+vx*dt_before), y=(py+vy*dt_before) }
+    local va = (na-pa)/(dt_before+dt_after)
+    return { x=(px+vx*dt_before), y=(py+vy*dt_before), rad=(pa+va*dt_before) }
 end
 function Person:position(time)
     assert(time)
