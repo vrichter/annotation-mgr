@@ -1,10 +1,10 @@
 -- config
 local opts = {
     position_size = 50,
-    person_pos_color_annotation = '#268f2666',
-    person_pos_color_interpolated = '#26268f66',
-    person_pos_color_selected = '#8f262666',
-    person_pos_color_border = '#000000',
+    track_pos_color_annotation = '#268f2666',
+    track_pos_color_interpolated = '#26268f66',
+    track_pos_color_selected = '#8f262666',
+    track_pos_color_border = '#000000',
 }
 (require 'mp.options').read_options(opts,"annotation-gui")
 
@@ -12,7 +12,7 @@ local mp = require 'mp'
 local assdraw = require 'mp.assdraw'
 local utils = require 'mp.utils'
 local msg = require 'mp.msg'
-local Person = require 'person'
+local Track = require 'track'
 local dump = require 'dump'
 
 local function bind(t, k)
@@ -32,7 +32,7 @@ function Gui:new(o)
     self.data = nil
     -- gui state
     self.ready = false
-    self.marked_person = nil
+    self.marked_track = nil
     self.modified = true
     -- callbacks provided
     self.observers = {}
@@ -128,11 +128,11 @@ end
 function Gui:tr_video_to_px_scale(x)
     return x*self:property('video-scale')
 end
-function Gui:tr_person_to_video(person)
-    return person.x, person.y
+function Gui:tr_track_to_video(track)
+    return track.x, track.y
 end
-function Gui:tr_person_to_px(person)
-    return self:tr_video_to_px(self:tr_person_to_video(person))
+function Gui:tr_track_to_px(track)
+    return self:tr_video_to_px(self:tr_track_to_video(track))
 end
 function Gui:tr_rotation_from_points_rad(x_center, y_center, x_dir, y_dir)
     local xd = x_center-x_dir
@@ -146,11 +146,11 @@ function Gui:tr_rotation_from_points_rad(x_center, y_center, x_dir, y_dir)
     print(angle)
     return angle
 end
-function Gui:tr_person_to_rotation_rad(person)
-    return person.rad
+function Gui:tr_track_to_rotation_rad(track)
+    return track.rad
 end
-function Gui:tr_person_to_rotation_deg(person)
-    return person.rad*180/math.pi
+function Gui:tr_track_to_rotation_deg(track)
+    return track.rad*180/math.pi
 end
 function Gui:calculate_dist(ax,ay,bx,by)
     return math.sqrt(math.abs((bx-ax)^2-(by-ay)^2))
@@ -189,24 +189,24 @@ function Gui:asstools_create_color_from_hex(color)
     return result
 end
 
-function Gui:draw_person_positions(ass,persons)
+function Gui:draw_track_positions(ass,tracks)
     local size = self:tr_video_to_px_scale(opts.position_size)/2
     local time = self:property('time-pos')
-    for key, person in pairs(persons) do
-        local position, interpolated = person:position(time)
+    for key, track in pairs(tracks) do
+        local position, interpolated = track:position(time)
         if position then
-            local color = {border = opts.person_pos_color_border}
-            if self.marked_person and (person.id == self.marked_person.id) then
-                color.primary = opts.person_pos_color_selected
+            local color = {border = opts.track_pos_color_border}
+            if self.marked_track and (track.id == self.marked_track.id) then
+                color.primary = opts.track_pos_color_selected
             elseif interpolated then
-                color.primary = opts.person_pos_color_interpolated
+                color.primary = opts.track_pos_color_interpolated
             else
-                color.primary = opts.person_pos_color_annotation
+                color.primary = opts.track_pos_color_annotation
             end
-            local px, py = self:tr_person_to_px(position)
+            local px, py = self:tr_track_to_px(position)
             ass:new_event()
             ass:append('{\\org('..px..','..py..')}')
-            ass:append('{\\frz'..self:tr_person_to_rotation_deg(position)..'}')
+            ass:append('{\\frz'..self:tr_track_to_rotation_deg(position)..'}')
             ass:append(self:asstools_create_color_from_hex(color))
             ass:pos(0,0)
             ass:draw_start()
@@ -240,9 +240,9 @@ function Gui:render_clean()
     mp.set_osd_ass(self:property('osd-width'), self:property('osd-height'), ass.text)
 end
 
-function Gui:render_persons(persons)
+function Gui:render_tracks(tracks)
     local ass = assdraw.ass_new()
-    self:draw_person_positions(ass,persons)
+    self:draw_track_positions(ass,tracks)
     --self:draw_tracking_positions(ass,tracking)
     mp.set_osd_ass(self:property('osd-width'), self:property('osd-height'), ass.text)
 end
@@ -253,7 +253,7 @@ function Gui:render_gui()
     elseif type(self.data) == 'string' then
         self:render_text_only(self.data)
     else 
-        self:render_persons(self.data)
+        self:render_tracks(self.data)
     end
 end
 

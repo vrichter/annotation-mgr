@@ -7,7 +7,7 @@ local opts = {
 local mp = require 'mp'
 local utils = require 'mp.utils'
 local msg = require 'mp.msg'
-local Person = require 'person'
+local Track = require 'track'
 local Gui = require 'gui'
 local dump = require 'dump'
 
@@ -17,7 +17,7 @@ _data = {
     dir = "",
     ready = false,
     time = 0,
-    persons = {}
+    tracks = {}
 }
 _gui = Gui:new()
 
@@ -71,7 +71,7 @@ function load_config_from_dir(dir)
     if not pt == nil then
         _data.person_tracking = pt
     end
-    _gui:update_data(_data.person)
+    _gui:update_data(_data.track)
     mp.set_property_native('pause',pause_state)
 end
 function update_config_for_file(path,file)
@@ -80,41 +80,41 @@ end
 mp.observe_property("path", native, observe_path)
 
 -- update model
-function data_insert_person(person)
-    table.insert(_data.persons,person)
-    _gui:update_data(_data.persons)
+function data_insert_track(track)
+    table.insert(_data.tracks,track)
+    _gui:update_data(_data.tracks)
 end
-function data_remove_person(person)
-    table.remove(_data.persons)
-    _gui:update_data(_data.persons)
+function data_remove_track(track)
+    table.remove(_data.tracks)
+    _gui:update_data(_data.tracks)
 end
 function data_add_annotation(id,time,x,y,r)
     print('add annotation:',id,time,x,y,r)
-    local current = _data.persons[id]:position(time)
+    local current = _data.tracks[id]:position(time)
     if current then
         x = x or current.x
         y = y or current.y
         r = r or current.rad
     end
     print('current:',dump(current),'r',r)
-    _data.persons[id]:add_annotation(time,x,y,r)
-    _gui:update_data(_data.persons)
+    _data.tracks[id]:add_annotation(time,x,y,r)
+    _gui:update_data(_data.tracks)
 end
 function data_remove_annotation(id,time)
-    print('p',_data.persons,'id',id,'pid',_data.persons[id],'t',time)
-    _data.persons[id]:remove_annotation(time)
-    _gui:update_data(_data.persons)
+    print('p',_data.tracks,'id',id,'pid',_data.tracks[id],'t',time)
+    _data.tracks[id]:remove_annotation(time)
+    _gui:update_data(_data.tracks)
 end
 
 
 -- add, move, remove annotations from gui callbacks
-function add_person_annotation(vx,vy)
+function add_track_annotation(vx,vy)
     assert(vx)
     assert(vy)
-    local person = Person:new()
-    person:add_annotation(_data.time,vx,vy)
-    msg.info('created a new person with position',dump(person))
-    data_insert_person(person)
+    local track = Track:new()
+    track:add_annotation(_data.time,vx,vy)
+    msg.info('created a new track with position',dump(track))
+    data_insert_track(track)
 end
 function find_annotation_next_to(vx,vy,max_dist)
     assert(vx)
@@ -123,14 +123,14 @@ function find_annotation_next_to(vx,vy,max_dist)
     local next = nil
     local min_dist = nil
     local time = _data.time
-    for key, person in pairs(_data.persons) do
-        local person_pos = person:position(time)
-        if not (person_pos == nil) then
-            local pvx, pvy = _gui:tr_person_to_video(person_pos)
+    for key, track in pairs(_data.tracks) do
+        local track_pos = track:position(time)
+        if not (track_pos == nil) then
+            local pvx, pvy = _gui:tr_track_to_video(track_pos)
             local dist = _gui:calculate_dist(vx, vy, pvx, pvy)
             if min_dist == nil or dist < min_dist then
                 min_dist = dist
-                next = person
+                next = track
             end
         end
     end
@@ -140,7 +140,7 @@ function find_annotation_next_to(vx,vy,max_dist)
         return next
     end
 end
-function remove_person_annotation(vx,vy)
+function remove_track_annotation(vx,vy)
     assert(vx)
     assert(vy)
     local next = find_annotation_next_to(vx,vy,_gui.opts.position_size/2)
@@ -148,44 +148,44 @@ function remove_person_annotation(vx,vy)
         data_remove_annotation(next.id,_data.time)
     end
 end
-function move_person(vx, vy)
+function move_track(vx, vy)
     assert(vx)
     assert(vy)
-    data_add_annotation(_gui.marked_person.id,_data.time,vx,vy)
+    data_add_annotation(_gui.marked_track.id,_data.time,vx,vy)
 end
-function rotate_person(vx, vy)
+function rotate_track(vx, vy)
     assert(vx)
     assert(vy)
-    local position = _gui.marked_person:position(_data.time)
+    local position = _gui.marked_track:position(_data.time)
     local rad = _gui:tr_rotation_from_points_rad(position.x,position.y,vx,vy)
-    -- rotate marked person
-    data_add_annotation(_gui.marked_person.id,_data.time,position.x,position.y,rad)
+    -- rotate marked track
+    data_add_annotation(_gui.marked_track.id,_data.time,position.x,position.y,rad)
 end
 
 function select_or(f,vx,vy,...)
-    if _gui.marked_person then
-        -- call function and unmark person
+    if _gui.marked_track then
+        -- call function and unmark track
         f(vx,vy,...)
-        _gui.marked_person = nil
+        _gui.marked_track = nil
         _gui.modified = true
     else
-        -- mark person
-        _gui.marked_person = find_annotation_next_to(vx,vy,_gui.opts.position_size/2)
+        -- mark track
+        _gui.marked_track = find_annotation_next_to(vx,vy,_gui.opts.position_size/2)
         _gui.modified = true
     end
 end
 
 function ctrl_left_click_handler(vx,vy,event)
-    add_person_annotation(vx,vy)
+    add_track_annotation(vx,vy)
 end
 function ctrl_right_click_handler(vx,vy,event)
-    remove_person_annotation(vx,vy)
+    remove_track_annotation(vx,vy)
 end
 function left_click_handler(vx,vy,event)
-    select_or(move_person,vx,vy)
+    select_or(move_track,vx,vy)
 end
 function right_click_handler(vx,vy,event)
-    select_or(rotate_person,vx,vy)
+    select_or(rotate_track,vx,vy)
 end
 
 function if_ready(f)
