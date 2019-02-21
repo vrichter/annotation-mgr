@@ -90,7 +90,7 @@ function data_remove_track(track)
 end
 function data_add_annotation(id,time,x,y,r)
     print('add annotation:',id,time,x,y,r)
-    local current = _data.tracks[id]:position(time)
+    local current = (_data.tracks[id]:position(time)).position
     if current then
         x = x or current.x
         y = y or current.y
@@ -124,7 +124,7 @@ function find_annotation_next_to(vx,vy,max_dist)
     local min_dist = nil
     local time = _data.time
     for key, track in pairs(_data.tracks) do
-        local track_pos = track:position(time)
+        local track_pos = (track:position(time)).position
         if not (track_pos == nil) then
             local pvx, pvy = _gui:tr_track_to_video(track_pos)
             local dist = _gui:calculate_dist(vx, vy, pvx, pvy)
@@ -156,23 +156,35 @@ end
 function rotate_track(vx, vy)
     assert(vx)
     assert(vy)
-    local position = _gui.marked_track:position(_data.time)
+    local position = (_gui.marked_track:position(_data.time)).position
     local rad = _gui:tr_rotation_from_points_rad(position.x,position.y,vx,vy)
     -- rotate marked track
     data_add_annotation(_gui.marked_track.id,_data.time,position.x,position.y,rad)
 end
-
-function select_or(f,vx,vy,...)
-    if _gui.marked_track then
-        -- call function and unmark track
-        f(vx,vy,...)
-        _gui.marked_track = nil
-        _gui.modified = true
-    else
-        -- mark track
-        _gui.marked_track = find_annotation_next_to(vx,vy,_gui.opts.position_size/2)
-        _gui.modified = true
+function set_end(vx, vy)
+    local annotation = find_annotation_next_to(vx,vy,_gui.opts.position_size/2)
+    local changed = false
+    if (annotation) then
+        local time = _data.time
+        local entry = annotation:position(time)
+        local first, last = annotation:get_time_endpoints()
+        if (entry.position) then
+            if (entry.interpolated) then
+                data_add_annotation(annotation.id, time, vx, vy)
+                changed = true
+            end
+            if (time >= last) then
+                annotation:set_end_time(time)
+                changed = true
+            end
+            if (time <= first) then
+                annotation:set_start_time(time)
+                changed = true
+            end
+            return changed
+        end
     end
+    return changed
 end
 
 function ctrl_left_click_handler(vx,vy,event)
@@ -182,10 +194,33 @@ function ctrl_right_click_handler(vx,vy,event)
     remove_track_annotation(vx,vy)
 end
 function left_click_handler(vx,vy,event)
-    select_or(move_track,vx,vy)
+    if _gui.marked_track then
+        -- call function and unmark track
+        move_track(vx,vy)
+        _gui.marked_track = nil
+        _gui.modified = true
+    else
+        -- mark track
+        _gui.marked_track = find_annotation_next_to(vx,vy,_gui.opts.position_size/2)
+        _gui.modified = true
+    end
 end
 function right_click_handler(vx,vy,event)
-    select_or(rotate_track,vx,vy)
+    if _gui.marked_track then
+        -- call function and unmark track
+        rotate_track(vx,vy)
+        _gui.marked_track = nil
+        _gui.modified = true
+    else
+        local changed = set_end(vx,vy)
+        if (changed) then
+            _gui.modified = true
+       end
+    end
+end
+function escape_handler()
+    _gui.marked_track = nil
+    _gui.modified = true
 end
 
 function if_ready(f)
@@ -208,5 +243,6 @@ _gui:add_mouse_binding("Ctrl+MBTN_LEFT", "ctrl_left_click_handler", if_ready(ctr
 _gui:add_mouse_binding("Ctrl+MBTN_RIGHT", "ctrl_right_click_handler", if_ready(ctrl_right_click_handler))
 _gui:add_mouse_binding("MBTN_LEFT", "left_click_handler", if_ready(left_click_handler))
 _gui:add_mouse_binding("MBTN_RIGHT", "right_click_handler", if_ready(right_click_handler))
+_gui:add_key_binding("ESC", "escape_handler", if_ready(escape_handler))
 _gui:add_time_binding(function(time) _data.time = time end)
 --mp.register_event("tick", on_tick)

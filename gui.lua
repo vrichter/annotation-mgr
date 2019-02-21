@@ -1,8 +1,9 @@
 -- config
 local opts = {
     position_size = 50,
-    track_pos_color_annotation = '#268f2666',
+    track_pos_color_annotation = '#5b268f66',
     track_pos_color_interpolated = '#26268f66',
+    track_pos_color_endpoint = '#26268f66',
     track_pos_color_selected = '#8f262666',
     track_pos_color_border = '#000000',
 }
@@ -193,32 +194,40 @@ function Gui:draw_track_positions(ass,tracks)
     local size = self:tr_video_to_px_scale(opts.position_size)/2
     local time = self:property('time-pos')
     for key, track in pairs(tracks) do
-        local position, interpolated = track:position(time)
-        if position then
-            local color = {border = opts.track_pos_color_border}
-            if self.marked_track and (track.id == self.marked_track.id) then
-                color.primary = opts.track_pos_color_selected
-            elseif interpolated then
-                color.primary = opts.track_pos_color_interpolated
-            else
-                color.primary = opts.track_pos_color_annotation
-            end
-            local px, py = self:tr_track_to_px(position)
-            ass:new_event()
-            ass:append('{\\org('..px..','..py..')}')
-            ass:append('{\\frz'..self:tr_track_to_rotation_deg(position)..'}')
-            ass:append(self:asstools_create_color_from_hex(color))
-            ass:pos(0,0)
-            ass:draw_start()
-            --ass:rect_cw(px-size, py-size, px+size, py+size)
-            ass:move_to(px-size,py)
-            ass:line_to(px,py-2*size) 
-            ass:line_to(px+size,py)
+        local track_position = track:position(time)
+        print("track:" .. dump(track_position))
+        if (track_position) then 
+            local position = track_position.position
+            local interpolated = track_position.interpolated
+            local track_endpoint = track_position.endpoint
+            if position then
+                local color = {border = opts.track_pos_color_border}
+                if self.marked_track and (track.id == self.marked_track.id) then
+                    color.primary = opts.track_pos_color_selected
+                elseif interpolated then
+                    color.primary = opts.track_pos_color_interpolated
+                elseif track_endpoint then
+                    color.primary = opts.track_pos_color_endpoint
+                else
+                    color.primary = opts.track_pos_color_annotation
+                end
+                local px, py = self:tr_track_to_px(position)
+                ass:new_event()
+                ass:append('{\\org('..px..','..py..')}')
+                ass:append('{\\frz'..self:tr_track_to_rotation_deg(position)..'}')
+                ass:append(self:asstools_create_color_from_hex(color))
+                ass:pos(0,0)
+                ass:draw_start()
+                --ass:rect_cw(px-size, py-size, px+size, py+size)
+                ass:move_to(px-size,py)
+                ass:line_to(px,py-2*size) 
+                ass:line_to(px+size,py)
 
-            --ass:move_to(x0, y0)
-            --ass:line_to(x0, y1)
-            --ass:line_to(x1, y1)
-            --ass:line_to(x1, y0)
+                --ass:move_to(x0, y0)
+                --ass:line_to(x0, y1)
+                --ass:line_to(x1, y1)
+                --ass:line_to(x1, y0)
+            end
         end
     end
     ass:draw_stop()
@@ -275,6 +284,10 @@ end
 
 function Gui:add_mouse_binding(key, name, functor)
     mp.add_key_binding(key,name,self:mouse_binding_wrapper(functor))
+end
+
+function Gui:add_key_binding(key, name, functor)
+    mp.add_key_binding(key,name,functor)
 end
 
 function Gui:add_observer(name, callback)

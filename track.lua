@@ -1,13 +1,16 @@
 local Annotations = require "annotations"
 local dump = require "dump"
 
-local Track = {_max_id=1}
+local Track = {}
+for k, v in pairs(Annotations) do
+    Track[k] = v
+end
+Track._max_id = 1
 function Track:new(o)
-    o = o or {}
+    o = o or Annotations:new(o)
     setmetatable(o, self)
     self.__index = self
     o['id'] = Track._max_id
-    o.annotations = Annotations:new()
     Track._max_id  = Track._max_id+1
     return o
 end
@@ -16,11 +19,11 @@ function Track:add_annotation(time,x_postition,y_position,rotation_radian)
     assert(x_postition)
     assert(y_position)
     rotation_radian = rotation_radian or 0
-    self.annotations:add(time,{x=x_postition,y=y_position,rad=rotation_radian})
+    Track.add(self,time,{x=x_postition,y=y_position,rad=rotation_radian})
 end
 function Track:remove_annotation(time)
     assert(time)
-    self.annotations:remove(time)
+    Track.remove(self,time)
 end
 function Track:interpolate(p,n,dt_before,dt_after)
     assert(p)
@@ -41,19 +44,43 @@ end
 function Track:position(time)
     assert(time)
     local time = time or _property_time
-    local entry = self.annotations:get_entry(time)
+    local entry = Track.get_entry(self,time)
     if not (entry == nil) then
-        return entry, false
+        return { position = entry, interpolated = false, endpoint = ((time == Track.get_start_time(self)) or (time == Track.get_end_time(self))) }
     end
     -- need to interpolate
-    local previous, next, dt_before, dt_after = self.annotations:find_neighbours(time)
-    if (not previous) or (previous.lost == true) then
-        return next, true
+    local neighbours = Track.find_neighbours(self,time)
+    local previous = neighbours.previous.annotation
+    local next = neighbours.next.annotation
+    local dt_before = neighbours.previous.time_delta
+    local dt_after = neighbours.next.time_delta
+    result = {
+        position = nil,
+        interpolated = nil,
+        endpoint = nil
+    }
+    if (not previous) and (not next) then
+        -- fall through. position should be empty
+    elseif (previous) and (next) then
+        result = {
+            position = self:interpolate(previous,next,dt_before,dt_after),
+            interpolated = true,
+            endpoint = false
+        }
+    elseif (not previous) and not (Track.is_start_time(self,neighbours.next.time)) then
+        result = {
+            position = next,
+            interpolated = false,
+            endpoint = false
+        }
+    elseif (not next) and not (Track.is_end_time(self,neighbours.previous.time)) then
+        result = {
+            position = previous,
+            interpolated = false,
+            endpoint = false
+        }
     end
-    if (not next) or (next.lost == true) then
-        return previous, true
-    end
-    return self:interpolate(previous,next,dt_before,dt_after), true
+    return result
 end
 
 return Track
