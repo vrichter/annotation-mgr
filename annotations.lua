@@ -1,5 +1,6 @@
 -- This module provides the annotations class
 local dump = require 'dump'
+local msg = require 'mp.msg'
 
 local Annotations = {}
 function Annotations:new(o)
@@ -12,7 +13,7 @@ function Annotations:new(o)
     return o
 end
 function Annotations:add(time,value,nextvalue)
-    print('time',time,'value',dump(value))
+    msg.info('time',time,'value',dump(value))
     assert(time)
     assert(value)
     if not self.data[time] then
@@ -43,6 +44,12 @@ function Annotations:set_end_time(time)
     end
     self.end_time = time
 end
+function Annotations:reset_start_time()
+    self.start_time = nil
+end
+function Annotations:reset_end_time()
+    self.end_time = nil
+end
 function Annotations:is_start_time(time)
     return (not (self.start_time == nil)) and (self.start_time == time)
 end
@@ -51,10 +58,10 @@ function Annotations:is_end_time(time)
 end
 function Annotations:remove(time)
     assert(time)
-    print('before',dump(self.data))
+    msg.info('before',dump(self.data))
     --table.remove(self.data,time)
     self.data[time]=nil
-    print('after',dump(self.data))
+    msg.info('after',dump(self.data))
     -- update min/max
     if (time == self.min) or (time == self.max) then
         self.update_min_max()

@@ -17,7 +17,7 @@ local Track = require 'track'
 local dump = require 'dump'
 
 local function bind(t, k)
-    print('bind:',t,k)
+    msg.info('bind:',t,k)
     return function(...) return t[k](t, ...) end
 end
 
@@ -113,7 +113,7 @@ end
 
 function Gui:update_data(data)
     self.data = data
-    print('self',self,'set data:',dump(self.data))
+    msg.info('self',self,'set data:',dump(self.data))
     self.modified = true
 end
 
@@ -144,7 +144,7 @@ function Gui:tr_rotation_from_points_rad(x_center, y_center, x_dir, y_dir)
     xz = 0
     yz = 1
     local angle = - (math.atan2(yd,xd) - math.atan2(yz,xz))
-    print(angle)
+    msg.info(angle)
     return angle
 end
 function Gui:tr_track_to_rotation_rad(track)
@@ -195,7 +195,7 @@ function Gui:draw_track_positions(ass,tracks)
     local time = self:property('time-pos')
     for key, track in pairs(tracks) do
         local track_position = track:position(time)
-        print("track:" .. dump(track_position))
+        msg.info("track:" .. dump(track_position))
         if (track_position) then 
             local position = track_position.position
             local interpolated = track_position.interpolated

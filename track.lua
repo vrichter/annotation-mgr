@@ -1,5 +1,6 @@
 local Annotations = require "annotations"
 local dump = require "dump"
+local msg = require 'mp.msg'
 
 local Track = {}
 for k, v in pairs(Annotations) do
@@ -70,13 +71,13 @@ function Track:position(time)
     elseif (not previous) and not (Track.is_start_time(self,neighbours.next.time)) then
         result = {
             position = next,
-            interpolated = false,
+            interpolated = true,
             endpoint = false
         }
     elseif (not next) and not (Track.is_end_time(self,neighbours.previous.time)) then
         result = {
             position = previous,
-            interpolated = false,
+            interpolated = true,
             endpoint = false
         }
     end

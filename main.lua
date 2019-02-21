@@ -89,19 +89,19 @@ function data_remove_track(track)
     _gui:update_data(_data.tracks)
 end
 function data_add_annotation(id,time,x,y,r)
-    print('add annotation:',id,time,x,y,r)
+    msg.info('add annotation:',id,time,x,y,r)
     local current = (_data.tracks[id]:position(time)).position
     if current then
         x = x or current.x
         y = y or current.y
         r = r or current.rad
     end
-    print('current:',dump(current),'r',r)
+    msg.info('current:',dump(current),'r',r)
     _data.tracks[id]:add_annotation(time,x,y,r)
     _gui:update_data(_data.tracks)
 end
 function data_remove_annotation(id,time)
-    print('p',_data.tracks,'id',id,'pid',_data.tracks[id],'t',time)
+    msg.info('p',_data.tracks,'id',id,'pid',_data.tracks[id],'t',time)
     _data.tracks[id]:remove_annotation(time)
     _gui:update_data(_data.tracks)
 end
@@ -161,30 +161,46 @@ function rotate_track(vx, vy)
     -- rotate marked track
     data_add_annotation(_gui.marked_track.id,_data.time,position.x,position.y,rad)
 end
-function set_end(vx, vy)
-    local annotation = find_annotation_next_to(vx,vy,_gui.opts.position_size/2)
+function reset_end(annotation, time)
     local changed = false
-    if (annotation) then
-        local time = _data.time
-        local entry = annotation:position(time)
-        local first, last = annotation:get_time_endpoints()
-        if (entry.position) then
-            if (entry.interpolated) then
-                data_add_annotation(annotation.id, time, vx, vy)
-                changed = true
-            end
-            if (time >= last) then
-                annotation:set_end_time(time)
-                changed = true
-            end
-            if (time <= first) then
-                annotation:set_start_time(time)
-                changed = true
-            end
-            return changed
+    if (annotation:is_start_time(time)) then
+        annotation:reset_start_time()
+        changed = true
+    end
+    if (annotation:is_end_time(time)) then
+        annotation:reset_end_time()
+        changed = true
+    end
+    return changed
+end
+function set_end(annotation, time, vx, vy)
+    local changed = false
+    local entry = annotation:position(time)
+    local first, last = annotation:get_time_endpoints()
+    if (entry.position) then
+        if (entry.interpolated) then
+            data_add_annotation(annotation.id, time, vx, vy)
+            changed = true
+        end
+        if (time >= last) then
+            annotation:set_end_time(time)
+            changed = true
+        end
+        if (time <= first) then
+            annotation:set_start_time(time)
+            changed = true
         end
     end
     return changed
+end
+function toggle_end(vx, vy)
+    local annotation = find_annotation_next_to(vx,vy,_gui.opts.position_size/2)
+    if (annotation) then
+        local time = _data.time
+        if(reset_end(annotation, time)) then return true end
+        if(set_end(annotation, time, vx, vy)) then return true end
+      end
+    return false
 end
 
 function ctrl_left_click_handler(vx,vy,event)
@@ -212,7 +228,7 @@ function right_click_handler(vx,vy,event)
         _gui.marked_track = nil
         _gui.modified = true
     else
-        local changed = set_end(vx,vy)
+        local changed = toggle_end(vx,vy)
         if (changed) then
             _gui.modified = true
        end
