@@ -3,7 +3,7 @@ local opts = {
     position_size = 50,
     track_pos_color_annotation = '#5b268f66',
     track_pos_color_interpolated = '#26268f66',
-    track_pos_color_endpoint = '#26268f66',
+    track_pos_color_endpoint = '#8f8f2666',
     track_pos_color_selected = '#8f262666',
     track_pos_color_border = '#000000',
 }
@@ -12,7 +12,7 @@ local opts = {
 local mp = require 'mp'
 local assdraw = require 'mp.assdraw'
 local utils = require 'mp.utils'
-local msg = require 'mp.msg'
+local msg = require 'msg'
 local Track = require 'track'
 local dump = require 'dump'
 
@@ -193,9 +193,10 @@ end
 function Gui:draw_track_positions(ass,tracks)
     local size = self:tr_video_to_px_scale(opts.position_size)/2
     local time = self:property('time-pos')
+    if not time then return end
+    time = math.floor(time*1000)
     for key, track in pairs(tracks) do
         local track_position = track:position(time)
-        msg.info("track:" .. dump(track_position))
         if (track_position) then 
             local position = track_position.position
             local interpolated = track_position.interpolated
@@ -268,7 +269,7 @@ end
 
 function Gui:on_tick()
     --msg.info("tick was triggered")
-    if self.modified then
+    if self.modified and self:property('video-scale') then
         self:render_gui()
         self.modified = false
     end        

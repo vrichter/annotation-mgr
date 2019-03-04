@@ -1,6 +1,6 @@
 -- This module provides the annotations class
 local dump = require 'dump'
-local msg = require 'mp.msg'
+local msg = require 'msg'
 
 local Annotations = {}
 function Annotations:new(o)

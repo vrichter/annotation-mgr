@@ -1,15 +1,19 @@
 -- config
 local opts = {
-    person_tracking_file = "persontracking.json-",
+    person_tracking_file = "person-tracking-results.json",
+    annotation_suffix = "-tracking-annotation.json",
 }
 (require 'mp.options').read_options(opts,"annotation")
 
 local mp = require 'mp'
 local utils = require 'mp.utils'
-local msg = require 'mp.msg'
+local msg = require 'msg'
 local Track = require 'track'
 local Gui = require 'gui'
 local dump = require 'dump'
+local os = require 'os'
+
+local debug = require 'debug'
 
 -- local data
 _data = {
@@ -17,7 +21,8 @@ _data = {
     dir = "",
     ready = false,
     time = 0,
-    tracks = {}
+    tracks = {},
+    tracks_changed = false
 }
 _gui = Gui:new()
 
@@ -41,25 +46,47 @@ function observe_path(name, data)
         load_config_from_dir(dir)
     end
     if not (_data.file == file) then
+        msg.info('file changed from '.. dump(_data.file) .. ' to ' .. dump(file))
+        if not (_data.file == nil) then
+            save_annotation_for_file(dir .. '/' .. _data.file)
+        end
         _data.file = file
         update_config_for_file(dir,file)
+        _gui.marked_track = nil
     end
     _data.ready = true
 end
-function load_person_tracking(dir)
-    local person_path = dir .. opts.person_tracking_file
-    local info = utils.file_info(person_path)
+function backup_file(filename)
+    --- local info = utils.file_info(filename)
+    --- if (info and info.is_file) then
+    ---     os.rename(filename, filename .. '_' .. os.date('%F-%T.backup'))
+    --- end
+end
+function read_string_from_file(filename)
+    local info = utils.file_info(filename)
     if (not info) or (not info['is_file']) then
-        msg.info('person tracking file not found or is not regular file.')
+        msg.info('file not found or is not regular file.')
         return nil
     end
-    local file = assert(io.open(person_path))
+    local file = assert(io.open(filename,'r'))
     local string = file:read('*all')
     file:close()
-    msg.info('parsing to json')
-    local parsed = utils.parse_json(string)
-    msg.info('parsing to json done.')
-    return parsed
+    msg.info('read data:',string)
+    return string
+end
+function save_json_to_file(filename, json)
+    msg.info('saving ' .. json .. ' to file .. ' .. filename)
+    assert(filename)
+    assert(json)
+    backup_file(filename)
+    local file = assert(io.open(filename, 'w'))
+    local string = file:write(json)
+    file:close()
+end
+function load_person_tracking(dir)
+    local person_path = dir .. opts.person_tracking_file
+    msg.info('person tracking file: ' .. person_path)
+    msg.error('not implemented')
 end
 function load_config_from_dir(dir)
     local pause_state = mp.get_property_native('pause')
@@ -68,29 +95,67 @@ function load_config_from_dir(dir)
     mp.set_property_native('pause',true)
     msg.info('loading configuration from:',dir)
     local pt = load_person_tracking(dir)
-    if not pt == nil then
+    if not (pt == nil) then
         _data.person_tracking = pt
     end
-    _gui:update_data(_data.track)
+    mp.set_property_native('pause',pause_state)
+end
+function save_annotation_for_file(path)
+    local filename = path
+    if not _data.tracks_changed then
+        msg.info("not saving unchanged annotation for:", filename)
+        return 
+    end
+    local document = Track:serialize_tracks(_data.tracks)
+    if document == "[]" then
+        msg.info("not saving empty annotation for:", filename)
+    else
+        msg.info('saving annotation for file:', filename)
+        save_json_to_file(filename .. opts.annotation_suffix, document)
+    end
+end
+function load_annotation_for_file(path, file)
+    local filename = path .. "/" .. file
+    msg.info('loading annotation for file:', filename)
+    local annotation = Track:deserialize_tracks(read_string_from_file(filename .. opts.annotation_suffix))
+    if annotation then
+        _data.tracks = annotation
+    else
+        _data.tracks = {}
+    end
+    _data.tracks_changed = false
+    _gui:update_data(_data.tracks)
     mp.set_property_native('pause',pause_state)
 end
 function update_config_for_file(path,file)
-    msg.info('update config for file not implemented. path:',path,' file:',file)
+    load_annotation_for_file(path,file)
 end
 mp.observe_property("path", native, observe_path)
+function on_shutdown()
+    save_annotation_for_file(_data.path)
+end
+mp.register_event('shutdown',on_shutdown)
 
 -- update model
 function data_insert_track(track)
-    table.insert(_data.tracks,track)
+    _data.tracks[track.id] = track
     _gui:update_data(_data.tracks)
+    _data.tracks_changed = true
 end
 function data_remove_track(track)
     table.remove(_data.tracks)
     _gui:update_data(_data.tracks)
+    _data.tracks_changed = true
 end
 function data_add_annotation(id,time,x,y,r)
     msg.info('add annotation:',id,time,x,y,r)
-    local current = (_data.tracks[id]:position(time)).position
+    if not _data.tracks[id] then
+        msg.warn("id:" .. id .. " not found in tracks: " .. dump_pp(_data.tracks))
+        return 
+    end
+    local position = _data.tracks[id]:position(time)
+    if not position then return end
+    local current = position.position
     if current then
         x = x or current.x
         y = y or current.y
@@ -99,11 +164,13 @@ function data_add_annotation(id,time,x,y,r)
     msg.info('current:',dump(current),'r',r)
     _data.tracks[id]:add_annotation(time,x,y,r)
     _gui:update_data(_data.tracks)
+    _data.tracks_changed = true
 end
 function data_remove_annotation(id,time)
     msg.info('p',_data.tracks,'id',id,'pid',_data.tracks[id],'t',time)
     _data.tracks[id]:remove_annotation(time)
     _gui:update_data(_data.tracks)
+    _data.tracks_changed = true
 end
 
 
@@ -112,7 +179,9 @@ function add_track_annotation(vx,vy)
     assert(vx)
     assert(vy)
     local track = Track:new()
-    track:add_annotation(_data.time,vx,vy)
+    local time = _data.time
+    track:add_annotation(time,vx,vy)
+    track:set_start_time(time)
     msg.info('created a new track with position',dump(track))
     data_insert_track(track)
 end
@@ -202,7 +271,34 @@ function toggle_end(vx, vy)
       end
     return false
 end
-
+function find_next_neighbour_annotation(time)
+    local min_next = nil
+    for key, value in pairs(_data.tracks) do
+        local n = value:find_neighbours(time+1) -- after now
+        if n and n.next and n.next.time then
+            if not min_next then
+                min_next = n.next
+            elseif min_next.time > n.next.time then
+                min_next = n.next
+            end
+        end
+    end
+    return min_next
+end
+function find_previous_neighbour_annotation(time)
+    local max_previous = nil
+    for key, value in pairs(_data.tracks) do
+        local n = value:find_neighbours(time)
+        if n and n.previous and n.previous.time then
+            if not max_previous then
+                max_previous = n.previous
+            elseif max_previous.time < n.previous.time then
+                max_previous = n.previous
+            end
+        end
+    end
+    return max_previous
+end
 function ctrl_left_click_handler(vx,vy,event)
     add_track_annotation(vx,vy)
 end
@@ -238,6 +334,20 @@ function escape_handler()
     _gui.marked_track = nil
     _gui.modified = true
 end
+function end_handler()
+    local next = find_next_neighbour_annotation(_data.time)
+    if next then
+        msg.info('now: '.. _data.time .. ' goto next annotation: ' .. next.time)
+        mp.set_property('time-pos',next.time/1000)
+    end
+end
+function home_handler()
+    local previous = find_previous_neighbour_annotation(_data.time)
+    if previous then
+        msg.info('now: ' .. _data.time .. ' goto previous annotation: ' .. previous.time)
+        mp.set_property('time-pos',previous.time/1000)
+    end
+end
 
 function if_ready(f)
     return function(...)
@@ -260,5 +370,7 @@ _gui:add_mouse_binding("Ctrl+MBTN_RIGHT", "ctrl_right_click_handler", if_ready(c
 _gui:add_mouse_binding("MBTN_LEFT", "left_click_handler", if_ready(left_click_handler))
 _gui:add_mouse_binding("MBTN_RIGHT", "right_click_handler", if_ready(right_click_handler))
 _gui:add_key_binding("ESC", "escape_handler", if_ready(escape_handler))
-_gui:add_time_binding(function(time) _data.time = time end)
+_gui:add_key_binding("END", "end_handler", if_ready(end_handler))
+_gui:add_key_binding("HOME", "home_handler", if_ready(home_handler))
+_gui:add_time_binding(function(time) _data.time = math.floor(time*1000) end)
 --mp.register_event("tick", on_tick)

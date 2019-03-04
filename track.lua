@@ -1,18 +1,19 @@
 local Annotations = require "annotations"
 local dump = require "dump"
-local msg = require 'mp.msg'
+local msg = require 'msg'
+local utils = require 'mp.utils'
+local uuid = require 'dependencies/uuid'
 
 local Track = {}
 for k, v in pairs(Annotations) do
     Track[k] = v
 end
-Track._max_id = 1
+uuid.randomseed(os.time()+os.clock()*1000000)
 function Track:new(o)
     o = o or Annotations:new(o)
     setmetatable(o, self)
     self.__index = self
-    o['id'] = Track._max_id
-    Track._max_id  = Track._max_id+1
+    o.id = uuid.new()
     return o
 end
 function Track:add_annotation(time,x_postition,y_position,rotation_radian)
@@ -25,6 +26,12 @@ end
 function Track:remove_annotation(time)
     assert(time)
     Track.remove(self,time)
+end
+function Track:interpolate_angles(a,b,qt)
+    local max = math.pi*2
+    local da = (b-a) % max
+    local va = 2 * da % max - da
+    return a + va * qt
 end
 function Track:interpolate(p,n,dt_before,dt_after)
     assert(p)
@@ -39,8 +46,7 @@ function Track:interpolate(p,n,dt_before,dt_after)
     local na = n.rad
     local vx = (nx-px)/(dt_before+dt_after)
     local vy = (ny-py)/(dt_before+dt_after)
-    local va = (na-pa)/(dt_before+dt_after)
-    return { x=(px+vx*dt_before), y=(py+vy*dt_before), rad=(pa+va*dt_before) }
+    return { x=(px+vx*dt_before), y=(py+vy*dt_before), rad=self:interpolate_angles(pa,na,dt_before/(dt_before+dt_after)) }
 end
 function Track:position(time)
     assert(time)
@@ -83,5 +89,57 @@ function Track:position(time)
     end
     return result
 end
+function Track:serialize_if_exists(name)
+    if self[name] then
+        return '"' .. name .. '": ' .. self[name] .. ', '
+    end
+    return ''
+end
+function Track:serialize()
+    result = '{ "id": ' .. self.id .. ', ' .. 
+    self:serialize_if_exists("person_id") .. 
+    self:serialize_if_exists("start_time") .. 
+    self:serialize_if_exists("end_time")
+    result = result .. '"annotations": [ '
+    for key, value in pairs(self.data) do
+        result = result .. '{ "time": ' .. key .. ', "x": ' .. value.x .. ', "y": ' .. value.y .. ', "rad": ' .. value.rad .. ' }, '
+    end
+    result = result:gsub(", $", " ")
+    result = result .. '] }'
+    return result
+end
+function Track:serialize_tracks(data)
+    result = '['
+    for key, value in pairs(data) do
+        result = result .. Track.serialize(value) .. ', '
+    end
+    result = result:gsub(", $", " ")
+    result = result .. ']'
+    return result
+end
+function copy_if(name, from, to)
+    local val = from[name]
+    if val then to[name] = val end
+end
+function Track:deserialize_tracks(data)
+    result = {}
+    if not data then return result end
+    parsed = utils.parse_json(data)
+    for key, parsed_track in pairs(parsed) do
+        assert(parsed_track.annotations)
+        assert(parsed_track.id)
+        local track = Track:new()
+        track.id = parsed_track.id
+        copy_if('person_id', parsed_track, track)
+        copy_if('start_time', parsed_track, track)
+        copy_if('end_time', parsed_track, track)
+        for key, parsed_annotation in pairs(parsed_track.annotations) do
+            track:add_annotation(parsed_annotation.time, parsed_annotation.x, parsed_annotation.y, parsed_annotation.rad)
+        end
+        result[track.id] = track
+    end
+    return result
+end
+
 
 return Track
