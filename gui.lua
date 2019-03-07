@@ -219,15 +219,20 @@ function Gui:draw_track_positions(ass,tracks)
                 ass:append(self:asstools_create_color_from_hex(color))
                 ass:pos(0,0)
                 ass:draw_start()
-                --ass:rect_cw(px-size, py-size, px+size, py+size)
+                
                 ass:move_to(px-size,py)
                 ass:line_to(px,py-2*size) 
                 ass:line_to(px+size,py)
+                ass:draw_stop()
 
-                --ass:move_to(x0, y0)
-                --ass:line_to(x0, y1)
-                --ass:line_to(x1, y1)
-                --ass:line_to(x1, y0)
+                -- draw name next to position
+                if track.person_id then
+                    ass:new_event()
+                    ass:append('{\\pos('..px..','..py..')}')
+                    ass:append('{\\fs10}')
+                    ass:append(track.person_id)
+                end
+
             end
         end
     end

@@ -89,14 +89,21 @@ function Track:position(time)
     end
     return result
 end
+local function quote_strings(param)
+    if type(param) == "string" then
+        return '"' .. param .. '"'
+    else
+        return param    
+    end
+end
 function Track:serialize_if_exists(name)
     if self[name] then
-        return '"' .. name .. '": ' .. self[name] .. ', '
+        return '"' .. name .. '": ' .. quote_strings(self[name]) .. ', '
     end
     return ''
 end
 function Track:serialize()
-    result = '{ "id": ' .. self.id .. ', ' .. 
+    result = '{ "id": "' .. self.id .. '", ' .. 
     self:serialize_if_exists("person_id") .. 
     self:serialize_if_exists("start_time") .. 
     self:serialize_if_exists("end_time")
@@ -125,6 +132,7 @@ function Track:deserialize_tracks(data)
     result = {}
     if not data then return result end
     parsed = utils.parse_json(data)
+    if not parsed then msg.error("could not parse as json: ", data); return result; end
     for key, parsed_track in pairs(parsed) do
         assert(parsed_track.annotations)
         assert(parsed_track.id)

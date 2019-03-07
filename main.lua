@@ -12,6 +12,7 @@ local Track = require 'track'
 local Gui = require 'gui'
 local dump = require 'dump'
 local os = require 'os'
+local menu = require 'menu'
 
 local debug = require 'debug'
 
@@ -19,9 +20,11 @@ local debug = require 'debug'
 _data = {
     path = "",
     dir = "",
+    file = "",
     ready = false,
     time = 0,
     tracks = {},
+    fixpoints = {},
     tracks_changed = false
 }
 _gui = Gui:new()
@@ -56,12 +59,6 @@ function observe_path(name, data)
     end
     _data.ready = true
 end
-function backup_file(filename)
-    --- local info = utils.file_info(filename)
-    --- if (info and info.is_file) then
-    ---     os.rename(filename, filename .. '_' .. os.date('%F-%T.backup'))
-    --- end
-end
 function read_string_from_file(filename)
     local info = utils.file_info(filename)
     if (not info) or (not info['is_file']) then
@@ -78,7 +75,6 @@ function save_json_to_file(filename, json)
     msg.info('saving ' .. json .. ' to file .. ' .. filename)
     assert(filename)
     assert(json)
-    backup_file(filename)
     local file = assert(io.open(filename, 'w'))
     local string = file:write(json)
     file:close()
@@ -317,7 +313,7 @@ function left_click_handler(vx,vy,event)
         _gui.modified = true
     end
 end
-function right_click_handler(vx,vy,event)
+function shift_right_click_handler(vx,vy,event)
     if _gui.marked_track then
         -- call function and unmark track
         rotate_track(vx,vy)
@@ -329,6 +325,32 @@ function right_click_handler(vx,vy,event)
             _gui.modified = true
        end
     end
+end
+menu_handler = {}
+menu_handler.set_person_id = function(track_id, person_id)
+    msg.info("setting track id" .. track_id .. " to person '" .. person_id .. "'")
+    _data.tracks[track_id].person_id = person_id
+    _data.tracks_changed = true
+    _gui.modified = true
+end
+menu_handler.get_person_ids = function()
+    local result = {}
+    for id, track in pairs(_data.tracks) do
+        if track.person_id then
+            result[track.person_id] = true
+        end
+    end
+    return result
+end
+menu_handler.marked_track = function()
+    return _gui.marked_track
+end
+menu_handler.add_fixpoint = function(name, vx, vy)
+    _data.fixpoints[name] = {}
+end
+function right_click_handler(vx,vy,event)
+    local menu_inst = menu:new({})
+    menu:menu_action(menu_handler, vx, vy)
 end
 function escape_handler()
     _gui.marked_track = nil
@@ -364,13 +386,19 @@ end
     --msg.info('time in tick:',mp.get_property_native('time-pos'))
 --end
 
+function on_frame(name,data)
+    msg.info(dump_pp(data))
+end
+
 --mp.add_key_binding("MBTN_LEFT", "", left_click_handler, { complex = true })
 _gui:add_mouse_binding("Ctrl+MBTN_LEFT", "ctrl_left_click_handler", if_ready(ctrl_left_click_handler))
 _gui:add_mouse_binding("Ctrl+MBTN_RIGHT", "ctrl_right_click_handler", if_ready(ctrl_right_click_handler))
 _gui:add_mouse_binding("MBTN_LEFT", "left_click_handler", if_ready(left_click_handler))
 _gui:add_mouse_binding("MBTN_RIGHT", "right_click_handler", if_ready(right_click_handler))
+_gui:add_mouse_binding("Shift+MBTN_RIGHT", "shift_right_click_handler", if_ready(shift_right_click_handler))
 _gui:add_key_binding("ESC", "escape_handler", if_ready(escape_handler))
 _gui:add_key_binding("END", "end_handler", if_ready(end_handler))
 _gui:add_key_binding("HOME", "home_handler", if_ready(home_handler))
+_gui:add_key_binding("n", "name_handler", if_ready(name_handler))
 _gui:add_time_binding(function(time) _data.time = math.floor(time*1000) end)
 --mp.register_event("tick", on_tick)
