@@ -194,7 +194,10 @@ function Gui:asstools_create_color_from_hex(color)
     return result
 end
 
-function Gui:draw_track_positions(ass,tracks)
+function Gui:draw_track_positions(ass,data)
+    local tracks = data.tracks
+    local tf = data.tf
+    local tf_target = data.file
     local size = self:tr_video_to_px_scale(opts.position_size)/2
     local time = self:property('time-pos')
     if not time then return end
@@ -216,7 +219,7 @@ function Gui:draw_track_positions(ass,tracks)
                 else
                     color.primary = opts.track_pos_color_annotation
                 end
-                local px, py = self:tr_track_to_px(position)
+                local px, py = self:tr_track_to_px(tf:transform_to(position,tf_target))
                 ass:new_event()
                 ass:append('{\\org('..px..','..py..')}')
                 if position.rad then
@@ -268,20 +271,22 @@ function Gui:render_clean()
     mp.set_osd_ass(self:property('osd-width'), self:property('osd-height'), ass.text)
 end
 
-function Gui:render_tracks(tracks)
+function Gui:render_tracks(data)
     local ass = assdraw.ass_new()
-    self:draw_track_positions(ass,tracks)
+    self:draw_track_positions(ass,data)
     --self:draw_tracking_positions(ass,tracking)
     mp.set_osd_ass(self:property('osd-width'), self:property('osd-height'), ass.text)
 end
 
 function Gui:render_gui()
-    if not self.data then
+    if self.data then
+        if not self.data.ready then
+           self:render_text_only("not ready yet. please wait a moment.")
+        else
+            self:render_tracks(self.data)
+        end
+    else
         self:render_clean()
-    elseif type(self.data) == 'string' then
-        self:render_text_only(self.data)
-    else 
-        self:render_tracks(self.data)
     end
 end
 

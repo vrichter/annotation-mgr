@@ -16,12 +16,12 @@ function Track:new(o)
     o.id = uuid.new()
     return o
 end
-function Track:add_annotation(time,x_postition,y_position,rotation_radian)
+function Track:add_annotation(time,x_postition,y_position,rotation_radian,frame_id)
     assert(time)
     assert(x_postition)
     assert(y_position)
     rotation_radian = rotation_radian
-    Track.add(self,time,{x=x_postition,y=y_position,rad=rotation_radian})
+    Track.add(self,time,{x=x_postition,y=y_position,rad=rotation_radian,frame_id=frame_id})
 end
 function Track:remove_annotation(time)
     assert(time)
@@ -36,6 +36,7 @@ function Track:interpolate_angles(a,b,qt)
     return a + va * qt
 end
 function Track:interpolate(p,n,dt_before,dt_after)
+    assert(p.frame_id == n.frame_id)
     assert(p)
     assert(n)
     assert(dt_before)
@@ -48,7 +49,7 @@ function Track:interpolate(p,n,dt_before,dt_after)
     local na = n.rad
     local vx = (nx-px)/(dt_before+dt_after)
     local vy = (ny-py)/(dt_before+dt_after)
-    return { x=(px+vx*dt_before), y=(py+vy*dt_before), rad=self:interpolate_angles(pa,na,dt_before/(dt_before+dt_after)) }
+    return { x=(px+vx*dt_before), y=(py+vy*dt_before), rad=self:interpolate_angles(pa,na,dt_before/(dt_before+dt_after)), frame_id=p.frame_id }
 end
 function Track:position(time)
     assert(time)
@@ -148,7 +149,7 @@ function Track:deserialize_tracks(data)
         copy_if('start_time', parsed_track, track)
         copy_if('end_time', parsed_track, track)
         for key, parsed_annotation in pairs(parsed_track.annotations) do
-            track:add_annotation(parsed_annotation.time, parsed_annotation.x, parsed_annotation.y, parsed_annotation.rad)
+            track:add_annotation(parsed_annotation.time, parsed_annotation.x, parsed_annotation.y, parsed_annotation.rad, parsed_annotation.frame_id)
         end
         result[track.id] = track
     end

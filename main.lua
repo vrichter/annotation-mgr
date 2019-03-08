@@ -13,6 +13,7 @@ local Gui = require 'gui'
 local dump = require 'dump'
 local os = require 'os'
 local menu = require 'menu'
+local transform = require 'tf'
 
 local debug = require 'debug'
 
@@ -25,7 +26,8 @@ _data = {
     time = 0,
     tracks = {},
     fixpoints = {},
-    tracks_changed = false
+    tracks_changed = false,
+    tf = transform:new()
 }
 _gui = Gui:new()
 
@@ -87,7 +89,7 @@ end
 function load_config_from_dir(dir)
     local pause_state = mp.get_property_native('pause')
     msg.info('pausing for config load')
-    _gui:update_data('paused for loading annotations. please wait a moment.')
+    _gui:update_data(_data)
     mp.set_property_native('pause',true)
     msg.info('loading configuration from:',dir)
     local pt = load_person_tracking(dir)
@@ -120,7 +122,7 @@ function load_annotation_for_file(path, file)
         _data.tracks = {}
     end
     _data.tracks_changed = false
-    _gui:update_data(_data.tracks)
+    _gui:update_data(_data)
     mp.set_property_native('pause',pause_state)
 end
 function update_config_for_file(path,file)
@@ -135,12 +137,12 @@ mp.register_event('shutdown',on_shutdown)
 -- update model
 function data_insert_track(track)
     _data.tracks[track.id] = track
-    _gui:update_data(_data.tracks)
+    _gui:update_data(_data)
     _data.tracks_changed = true
 end
 function data_remove_track(track)
     table.remove(_data.tracks)
-    _gui:update_data(_data.tracks)
+    _gui:update_data(_data)
     _data.tracks_changed = true
 end
 function data_add_annotation(id,time,x,y,r)
@@ -159,13 +161,13 @@ function data_add_annotation(id,time,x,y,r)
     end
     msg.info('current:',dump(current),'r',r)
     _data.tracks[id]:add_annotation(time,x,y,r)
-    _gui:update_data(_data.tracks)
+    _gui:update_data(_data)
     _data.tracks_changed = true
 end
 function data_remove_annotation(id,time)
     msg.info('p',_data.tracks,'id',id,'pid',_data.tracks[id],'t',time)
     _data.tracks[id]:remove_annotation(time)
-    _gui:update_data(_data.tracks)
+    _gui:update_data(_data)
     _data.tracks_changed = true
 end
 
