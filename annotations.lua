@@ -13,7 +13,7 @@ function Annotations:new(o)
     return o
 end
 function Annotations:add(time,value,nextvalue)
-    msg.info('time',time,'value',dump(value))
+    --msg.info('time',time,'value',dump(value))
     assert(time)
     assert(value)
     if not self.data[time] then

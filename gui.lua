@@ -113,7 +113,7 @@ end
 
 function Gui:update_data(data)
     self.data = data
-    msg.info('self',self,'set data:',dump(self.data))
+    --msg.info('self',self,'set data:',dump(self.data))
     self.modified = true
 end
 
@@ -151,7 +151,11 @@ function Gui:tr_track_to_rotation_rad(track)
     return track.rad
 end
 function Gui:tr_track_to_rotation_deg(track)
-    return track.rad*180/math.pi
+    if track.rad then
+        return track.rad*180/math.pi 
+    else 
+        return nil 
+    end
 end
 function Gui:calculate_dist(ax,ay,bx,by)
     return math.sqrt(math.abs((bx-ax)^2-(by-ay)^2))
@@ -215,16 +219,25 @@ function Gui:draw_track_positions(ass,tracks)
                 local px, py = self:tr_track_to_px(position)
                 ass:new_event()
                 ass:append('{\\org('..px..','..py..')}')
-                ass:append('{\\frz'..self:tr_track_to_rotation_deg(position)..'}')
-                ass:append(self:asstools_create_color_from_hex(color))
-                ass:pos(0,0)
-                ass:draw_start()
-                
-                ass:move_to(px-size,py)
-                ass:line_to(px,py-2*size) 
-                ass:line_to(px+size,py)
-                ass:draw_stop()
-
+                if position.rad then
+                    ass:append('{\\frz'..self:tr_track_to_rotation_deg(position)..'}')
+                    ass:append(self:asstools_create_color_from_hex(color))
+                    ass:pos(0,0)
+                    ass:draw_start()
+                    ass:move_to(px-size/2,py)
+                    ass:line_to(px,py-2*size) 
+                    ass:line_to(px+size/2,py)
+                    ass:draw_stop()
+                else
+                    ass:append(self:asstools_create_color_from_hex(color))
+                    ass:pos(0,0)
+                    ass:draw_start()
+                    ass:move_to(px-size/2,py-size/2)
+                    ass:line_to(px-size/2,py+size/2) 
+                    ass:line_to(px+size/2,py+size/2) 
+                    ass:line_to(px+size/2,py-size/2) 
+                    ass:draw_stop()
+                end
                 -- draw name next to position
                 if track.person_id then
                     ass:new_event()

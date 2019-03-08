@@ -20,7 +20,7 @@ function Track:add_annotation(time,x_postition,y_position,rotation_radian)
     assert(time)
     assert(x_postition)
     assert(y_position)
-    rotation_radian = rotation_radian or 0
+    rotation_radian = rotation_radian
     Track.add(self,time,{x=x_postition,y=y_position,rad=rotation_radian})
 end
 function Track:remove_annotation(time)
@@ -28,6 +28,8 @@ function Track:remove_annotation(time)
     Track.remove(self,time)
 end
 function Track:interpolate_angles(a,b,qt)
+    if not a then return b end
+    if not b then return a end
     local max = math.pi*2
     local da = (b-a) % max
     local va = 2 * da % max - da
@@ -109,7 +111,11 @@ function Track:serialize()
     self:serialize_if_exists("end_time")
     result = result .. '"annotations": [ '
     for key, value in pairs(self.data) do
-        result = result .. '{ "time": ' .. key .. ', "x": ' .. value.x .. ', "y": ' .. value.y .. ', "rad": ' .. value.rad .. ' }, '
+        if value.rad then
+            result = result .. '{ "time": ' .. key .. ', "x": ' .. value.x .. ', "y": ' .. value.y .. ', "rad": ' .. value.rad .. ' }, '
+        else
+            result = result .. '{ "time": ' .. key .. ', "x": ' .. value.x .. ', "y": ' .. value.y .. ' }, '
+        end
     end
     result = result:gsub(", $", " ")
     result = result .. '] }'

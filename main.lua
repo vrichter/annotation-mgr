@@ -68,11 +68,11 @@ function read_string_from_file(filename)
     local file = assert(io.open(filename,'r'))
     local string = file:read('*all')
     file:close()
-    msg.info('read data:',string)
+    --msg.info('read data:',string)
     return string
 end
 function save_json_to_file(filename, json)
-    msg.info('saving ' .. json .. ' to file .. ' .. filename)
+    --msg.info('saving ' .. json .. ' to file .. ' .. filename)
     assert(filename)
     assert(json)
     local file = assert(io.open(filename, 'w'))
