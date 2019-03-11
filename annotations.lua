@@ -58,10 +58,10 @@ function Annotations:is_end_time(time)
 end
 function Annotations:remove(time)
     assert(time)
-    msg.info('before',dump(self.data))
+    --msg.info('before',dump(self.data))
     --table.remove(self.data,time)
     self.data[time]=nil
-    msg.info('after',dump(self.data))
+    --msg.info('after',dump(self.data))
     -- update min/max
     if (time == self.min) or (time == self.max) then
         self.update_min_max()

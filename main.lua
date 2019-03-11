@@ -193,8 +193,8 @@ function find_annotation_next_to(vx,vy,max_dist)
     for key, track in pairs(_data.tracks) do
         local track_pos = (track:position(time)).position
         if not (track_pos == nil) then
-            local pvx, pvy = _gui:tr_track_to_video(track_pos)
-            local dist = _gui:calculate_dist(vx, vy, pvx, pvy)
+            local transformed = _data.tf:transform_to(track_pos, _data.file)
+            local dist = _gui:calculate_dist(vx, vy, transformed.x, transformed.y)
             if min_dist == nil or dist < min_dist then
                 min_dist = dist
                 next = track

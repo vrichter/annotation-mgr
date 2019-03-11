@@ -129,11 +129,8 @@ end
 function Gui:tr_video_to_px_scale(x)
     return x*self:property('video-scale')
 end
-function Gui:tr_track_to_video(track)
-    return track.x, track.y
-end
 function Gui:tr_track_to_px(track)
-    return self:tr_video_to_px(self:tr_track_to_video(track))
+    return self:tr_video_to_px(track.x, track.y)
 end
 function Gui:tr_rotation_from_points_rad(x_center, y_center, x_dir, y_dir)
     local xd = x_center-x_dir
@@ -218,11 +215,12 @@ function Gui:draw_track_positions(ass,data)
                 else
                     color.primary = opts.track_pos_color_annotation
                 end
-                local px, py = self:tr_track_to_px(tf:transform_to(position,tf_target))
+                local transformed_position = tf:transform_to(position,tf_target)
+                local px, py = self:tr_track_to_px(transformed_position)
                 ass:new_event()
                 ass:append('{\\org('..px..','..py..')}')
-                if position.rad then
-                    ass:append('{\\frz'..self:tr_track_to_rotation_deg(position)..'}')
+                if transformed_position.rad then
+                    ass:append('{\\frz'..self:tr_track_to_rotation_deg(transformed_position.rad)..'}')
                     ass:append(self:asstools_create_color_from_hex(color))
                     ass:pos(0,0)
                     ass:draw_start()
