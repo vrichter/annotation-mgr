@@ -143,12 +143,12 @@ function Gui:tr_rotation_from_points_rad(x_center, y_center, x_dir, y_dir)
     local angle = - (math.atan2(yd,xd) - math.atan2(yz,xz))
     return angle
 end
-function Gui:tr_track_to_rotation_rad(track)
+function Gui:tr_track_to_rotation_rad(rad)
     return track.rad
 end
-function Gui:tr_track_to_rotation_deg(track)
-    if track.rad then
-        return track.rad*180/math.pi 
+function Gui:tr_track_to_rotation_deg(rad)
+    if rad then
+        return rad*180/math.pi 
     else 
         return nil 
     end
