@@ -89,8 +89,8 @@ end
 function load_config_from_dir(dir)
     local pause_state = mp.get_property_native('pause')
     msg.info('pausing for config load')
-    _gui:update_data(_data)
     mp.set_property_native('pause',true)
+    _gui:update_data(_data)
     msg.info('loading configuration from:',dir)
     local pt = load_person_tracking(dir)
     if not (pt == nil) then
@@ -349,6 +349,13 @@ menu_handler.marked_track = function()
 end
 menu_handler.add_fixpoint = function(name, vx, vy)
     _data.fixpoints[name] = {}
+end
+menu_handler.find_annotation_next_to = function(vx, vy)
+    return find_annotation_next_to(vx,vy,_gui.opts.position_size/2)
+end
+menu_handler.mark_track = function(track)
+    _gui.marked_track = track
+    _gui.modified = true
 end
 function right_click_handler(vx,vy,event)
     local menu_inst = menu:new({})

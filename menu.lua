@@ -39,6 +39,7 @@ function Menu:menu_action(handler, vx, vy)
     }
     local marked_track = handler.marked_track()
     if marked_track then
+        table.insert(menu_list.context_menu, {"command", "Unmark track", "", function () handler.mark_track(nil) end, "", false, false})
         table.insert(menu_list.context_menu, {"cascade", "Set Person Id", "person_id_menu", "", "", false})
         menu_list.person_id_menu = {}
         for name, ignored in pairs(handler.get_person_ids()) do
@@ -51,7 +52,13 @@ function Menu:menu_action(handler, vx, vy)
             "command", "-- enter new name", "", 
             function() handler.set_person_id(marked_track.id, self.name_dialog()) end, 
             "", false})
+    else
+        local next = handler.find_annotation_next_to(vx, vy)
+        if (next) then
+            table.insert(menu_list.context_menu, {"command", "Mark track", "", function () handler.mark_track(next) end, "", false, false})
+        end
     end
+
 
     -- setting fix points in map
     table.insert(menu_list.context_menu, {"cascade", "Fix point", "fixpoint_menu", "", "", false})
