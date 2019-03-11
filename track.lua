@@ -112,11 +112,14 @@ function Track:serialize()
     self:serialize_if_exists("end_time")
     result = result .. '"annotations": [ '
     for key, value in pairs(self.data) do
+        result = result .. '{ "time": ' .. key .. ', "x": ' .. value.x .. ', "y": ' .. value.y
         if value.rad then
-            result = result .. '{ "time": ' .. key .. ', "x": ' .. value.x .. ', "y": ' .. value.y .. ', "rad": ' .. value.rad .. ' }, '
-        else
-            result = result .. '{ "time": ' .. key .. ', "x": ' .. value.x .. ', "y": ' .. value.y .. ' }, '
+            result = result .. ', "rad": ' .. value.rad
         end
+        if value.frame_id then
+            result = result .. ', "frame_id": ' .. quote_strings(value.frame_id)
+        end
+        result = result .. ' }, '
     end
     result = result:gsub(", $", " ")
     result = result .. '] }'
