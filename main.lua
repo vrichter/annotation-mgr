@@ -2,6 +2,7 @@
 local opts = {
     person_tracking_file = "person-tracking-results.json",
     annotation_suffix = "-tracking-annotation.json",
+    tf_filename = "transformations.json",
 }
 (require 'mp.options').read_options(opts,"annotation")
 
@@ -86,12 +87,19 @@ function load_person_tracking(dir)
     msg.info('person tracking file: ' .. person_path)
     msg.error('not implemented')
 end
+function load_transformations(dir)
+    local tf_path = dir .. opts.tf_filename
+    local tf = transform:deserialize(read_string_from_file(tf_path))
+    msg.error(tf:serialize())
+    return tf
+end
 function load_config_from_dir(dir)
     local pause_state = mp.get_property_native('pause')
     msg.info('pausing for config load')
     mp.set_property_native('pause',true)
     _gui:update_data(_data)
     msg.info('loading configuration from:',dir)
+    _data.tf = load_transformations(dir)
     local pt = load_person_tracking(dir)
     if not (pt == nil) then
         _data.person_tracking = pt
