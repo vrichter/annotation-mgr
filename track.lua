@@ -3,6 +3,7 @@ local dump = require "dump"
 local msg = require 'msg'
 local utils = require 'mp.utils'
 local uuid = require 'dependencies/uuid'
+local json = require 'dependencies/json'
 
 local Track = {}
 for k, v in pairs(Annotations) do
@@ -92,51 +93,26 @@ function Track:position(time)
     end
     return result
 end
-local function quote_strings(param)
-    if type(param) == "string" then
-        return '"' .. param .. '"'
-    else
-        return param    
-    end
-end
-function Track:serialize_if_exists(name)
-    if self[name] then
-        return '"' .. name .. '": ' .. quote_strings(self[name]) .. ', '
-    end
-    return ''
-end
-function Track:serialize()
-    result = '{ "id": "' .. self.id .. '", ' .. 
-    self:serialize_if_exists("person_id") .. 
-    self:serialize_if_exists("start_time") .. 
-    self:serialize_if_exists("end_time")
-    result = result .. '"annotations": [ '
+function Track:serialize(do_not_encode)
+    local annotations = {}
     for key, value in pairs(self.data) do
-        result = result .. '{ "time": ' .. key .. ', "x": ' .. value.x .. ', "y": ' .. value.y
-        if value.rad then
-            result = result .. ', "rad": ' .. value.rad
-        end
-        if value.frame_id then
-            result = result .. ', "frame_id": ' .. quote_strings(value.frame_id)
-        end
-        result = result .. ' }, '
+        table.insert(annotations, {time = key, x = value.x, y = value.y, rad = value.rad, frame_id = value.frame_id})
     end
-    result = result:gsub(", $", " ")
-    result = result .. '] }'
-    return result
+    local data = {
+        id = self.id, 
+        person_id = self.person_id, 
+        start_time = self.start_time, 
+        end_time = self.end_time,
+        annotations = annotations
+    }
+    if do_not_encode then return data else return json.encode(data) end
 end
-function Track:serialize_tracks(data)
-    result = '['
-    for key, value in pairs(data) do
-        result = result .. Track.serialize(value) .. ', '
+function Track:serialize_tracks(tracks, do_not_encode)
+    local data = {}
+    for key, value in pairs(tracks) do
+        table.insert(data,value:serialize(true))
     end
-    result = result:gsub(", $", " ")
-    result = result .. ']'
-    return result
-end
-function copy_if(name, from, to)
-    local val = from[name]
-    if val then to[name] = val end
+    if do_not_encode then return data else return json.encode(data) end
 end
 function Track:deserialize_tracks(data)
     result = {}
@@ -148,9 +124,9 @@ function Track:deserialize_tracks(data)
         assert(parsed_track.id)
         local track = Track:new()
         track.id = parsed_track.id
-        copy_if('person_id', parsed_track, track)
-        copy_if('start_time', parsed_track, track)
-        copy_if('end_time', parsed_track, track)
+        track.person_id = parsed_track.person_id
+        track.start_time = parsed_track.start_time
+        track.end_time = parsed_track.end_time
         for key, parsed_annotation in pairs(parsed_track.annotations) do
             track:add_annotation(parsed_annotation.time, parsed_annotation.x, parsed_annotation.y, parsed_annotation.rad, parsed_annotation.frame_id)
         end
