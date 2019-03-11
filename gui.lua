@@ -144,7 +144,6 @@ function Gui:tr_rotation_from_points_rad(x_center, y_center, x_dir, y_dir)
     xz = 0
     yz = 1
     local angle = - (math.atan2(yd,xd) - math.atan2(yz,xz))
-    msg.info(angle)
     return angle
 end
 function Gui:tr_track_to_rotation_rad(track)
