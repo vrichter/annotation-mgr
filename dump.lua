@@ -20,7 +20,7 @@ function dump(o, level, max_depth, pretty)
       return result
    end
    -- thanks to https://stackoverflow.com/questions/9168058/how-to-dump-a-table-to-console
-   if not o then
+   if type(o) == 'nil' then
       return 'NIL'
    end
    if type(o) == 'table' then
