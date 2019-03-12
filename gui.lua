@@ -190,6 +190,37 @@ function Gui:asstools_create_color_from_hex(color)
     return result
 end
 
+function Gui:draw_track_position(ass, px, py, rad, size, color, person_id)
+    ass:new_event()
+    ass:append('{\\org('..px..','..py..')}')
+    if rad then
+        ass:append('{\\frz'..self:tr_track_to_rotation_deg(rad)..'}')
+        ass:append(self:asstools_create_color_from_hex(color))
+        ass:pos(0,0)
+        ass:draw_start()
+        ass:move_to(px-size/2,py)
+        ass:line_to(px,py-2*size) 
+        ass:line_to(px+size/2,py)
+        ass:draw_stop()
+    else
+        ass:append(self:asstools_create_color_from_hex(color))
+        ass:pos(0,0)
+        ass:draw_start()
+        ass:move_to(px-size/2,py-size/2)
+        ass:line_to(px-size/2,py+size/2) 
+        ass:line_to(px+size/2,py+size/2) 
+        ass:line_to(px+size/2,py-size/2) 
+        ass:draw_stop()
+    end
+    -- draw name next to position
+    if person_id then
+        ass:new_event()
+        ass:append('{\\pos('..px..','..py..')}')
+        ass:append('{\\fs10}')
+        ass:append(person_id)
+    end
+end
+
 function Gui:draw_track_positions(ass,data)
     local tracks = data.tracks
     local tf = data.tf
@@ -217,35 +248,7 @@ function Gui:draw_track_positions(ass,data)
                 end
                 local transformed_position = tf:transform_to(position,tf_target)
                 local px, py = self:tr_track_to_px(transformed_position)
-                ass:new_event()
-                ass:append('{\\org('..px..','..py..')}')
-                if transformed_position.rad then
-                    ass:append('{\\frz'..self:tr_track_to_rotation_deg(transformed_position.rad)..'}')
-                    ass:append(self:asstools_create_color_from_hex(color))
-                    ass:pos(0,0)
-                    ass:draw_start()
-                    ass:move_to(px-size/2,py)
-                    ass:line_to(px,py-2*size) 
-                    ass:line_to(px+size/2,py)
-                    ass:draw_stop()
-                else
-                    ass:append(self:asstools_create_color_from_hex(color))
-                    ass:pos(0,0)
-                    ass:draw_start()
-                    ass:move_to(px-size/2,py-size/2)
-                    ass:line_to(px-size/2,py+size/2) 
-                    ass:line_to(px+size/2,py+size/2) 
-                    ass:line_to(px+size/2,py-size/2) 
-                    ass:draw_stop()
-                end
-                -- draw name next to position
-                if track.person_id then
-                    ass:new_event()
-                    ass:append('{\\pos('..px..','..py..')}')
-                    ass:append('{\\fs10}')
-                    ass:append(track.person_id)
-                end
-
+                self:draw_track_position(ass, px, py, transformed_position.rad, size, color, track.person_id)
             end
         end
     end
