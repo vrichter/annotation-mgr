@@ -37,6 +37,8 @@ function Menu:menu_action(handler, vx, vy)
         },
         playlist = generate_playlist_entries()
     }
+
+    -- track interaction
     local marked_track = handler.marked_track()
     if marked_track then
         table.insert(menu_list.context_menu, {"command", "Unmark track", "ESC", function () handler.mark_track(nil) end, "", false, false})
@@ -59,6 +61,23 @@ function Menu:menu_action(handler, vx, vy)
         end
     end
 
+    -- visualizations
+    local transformable = handler.get_transformable()
+    local first = true
+    for name, active in pairs(transformable) do
+        if first then
+            table.insert(menu_list.context_menu, {"cascade", "Show other annotations", "show_transformable_menu", "", "", false})
+            menu_list.show_transformable_menu = {}
+            first = false
+        end
+        local prefix = active and '> ' or ''
+        table.insert(menu_list.show_transformable_menu, {
+            "command", prefix .. name, "", 
+            function() handler.set_transformable(name, not active) end, 
+            "", false})
+        
+    end
+
 
     -- setting fix points in map
     table.insert(menu_list.context_menu, {"cascade", "Fix point", "fixpoint_menu", "", "", false})
@@ -70,6 +89,9 @@ function Menu:menu_action(handler, vx, vy)
         function () handler.remove_fixpoint(vx, vy) end,
         "", false}
     }
+    
+
+    -- create menu
     engine.createMenu(menu_list, 'context_menu', -1, -1, 'tk')
 end
 function Menu:name_dialog()

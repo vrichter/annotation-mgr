@@ -28,7 +28,9 @@ _data = {
     tracks = {},
     fixpoints = {},
     tracks_changed = false,
-    tf = transform:new()
+    tf = transform:new(),
+    transformable = {},
+    show_transformable = {}
 }
 _gui = Gui:new()
 
@@ -62,12 +64,16 @@ function observe_path(name, data)
     end
     _data.ready = true
 end
-function read_string_from_file(filename)
+function check_file_exists(filename)
     local info = utils.file_info(filename)
     if (not info) or (not info['is_file']) then
         msg.info('file not found or is not regular file.')
-        return nil
+        return false
     end
+    return true
+end
+function read_string_from_file(filename)
+    if not (check_file_exists(filename)) then return nil end
     local file = assert(io.open(filename,'r'))
     local string = file:read('*all')
     file:close()
@@ -87,10 +93,30 @@ function load_person_tracking(dir)
     msg.info('person tracking file: ' .. person_path)
     msg.error('not implemented')
 end
+function load_transformable_annotations()
+    local tf_new = {}
+    local show_new = {}
+    if _data.tf.transformations[_data.file] then -- only when current file transformable
+        for key, value in pairs(_data.tf.transformations) do
+            local filename = _data.dir .. '/' .. key .. opts.annotation_suffix
+            if (key ~= _data.file) and check_file_exists(filename) then
+                if _data.transformable[key] then
+                    tf_new[key] = _data.transformable[key]
+                    show_new[key] = _data.show_transformable[key]
+                else
+                    tf_new[key] = Track:deserialize_tracks(read_string_from_file(filename))
+                end
+            else
+                show_new[key] = nil
+            end
+        end
+    end
+    _data.transformable = tf_new
+    _data.show_transformable = show_new
+end
 function load_transformations(dir)
     local tf_path = dir .. opts.tf_filename
-    local tf = transform:deserialize(read_string_from_file(tf_path))
-    msg.error(tf:serialize())
+    _data.tf = transform:deserialize(read_string_from_file(tf_path))
     return tf
 end
 function load_config_from_dir(dir)
@@ -99,7 +125,7 @@ function load_config_from_dir(dir)
     mp.set_property_native('pause',true)
     _gui:update_data(_data)
     msg.info('loading configuration from:',dir)
-    _data.tf = load_transformations(dir)
+    load_transformations(dir)
     local pt = load_person_tracking(dir)
     if not (pt == nil) then
         _data.person_tracking = pt
@@ -130,6 +156,7 @@ function load_annotation_for_file(path, file)
         _data.tracks = {}
     end
     _data.tracks_changed = false
+    load_transformable_annotations()
     _gui:update_data(_data)
     mp.set_property_native('pause',pause_state)
 end
@@ -363,6 +390,17 @@ menu_handler.find_annotation_next_to = function(vx, vy)
 end
 menu_handler.mark_track = function(track)
     _gui.marked_track = track
+    _gui.modified = true
+end
+menu_handler.get_transformable = function()
+    local result = {}
+    for key, value in pairs(_data.transformable) do
+        result[key] = not (_data.show_transformable[key] == nil)
+    end
+    return result
+end
+menu_handler.set_transformable = function(name, boolean)
+    _data.show_transformable[name] = boolean
     _gui.modified = true
 end
 function right_click_handler(vx,vy,event)
