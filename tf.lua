@@ -11,28 +11,46 @@ function Tf:new(o)
     o.transformations = {}
     return o
 end
-local function transform_2d_rotation(rad, tf)
-    local point = tf * matrix {{ math.cos(rad), math.sin(rad), 1}}
-    local norm = math.sqrt((point[1]^2)+(point[2]^2))
-    local angle = - (math.atan2(yd,xd) - math.atan2(yz,xz))
-    return Math.atan2(point[2]/norm, point[1]/norm);
+local function homogenize(vector)
+    local factor = vector[3][1]
+    if factor == 0. or factor == 1. then
+        return vector
+    else 
+        return vector / factor
+    end
 end
 local function transform_2d_pose(pose, tf)
-    local point = tf * matrix {{pose.x}, {pose.y}, {1}}
-    local result = {x = point[1][1], y = point[2][1]}
-    if pose.rad then 
-        result.rad = transform_2d_rotation(pose.rad, tf)
+    assert(tf)
+    assert(pose.x)
+    assert(pose.y)
+    if not pose.rad then 
+        local point = homogenize(tf * matrix {{pose.x}, {pose.y}, {1}})
+        return {x = point[1][1], y = point[2][1]}
+    else
+        local point = homogenize(tf * matrix {{pose.x}, {pose.y}, {1}}) -- this is a point
+        local direction = homogenize(tf * matrix {{ math.cos(pose.rad) }, { math.sin(pose.rad) }, { 0 }}) -- this is a vector
+        local norm = matrix.normf(direction)
+        local rotation = math.atan2(direction[2][1]/norm, direction[1][1]/norm);
+        return {x = point[1][1], y = point[2][1], rad = rotation}
     end
-    return result
 end
-    -- { x, y, rad, frame_id }
+function Tf:transform_to_home(track)
+    assert(self.transformations[track.frame_id])
+    local home_tf = matrix.invert(self.transformations[track.frame_id])
+    assert(home_tf)
+    return transform_2d_pose(track, home_tf)
+end
 function Tf:transform_to(track, frame_id)
     if (not (track.frame_id)) or (not (frame_id)) or (track.frame_id == frame_id)  then return track end
     if not (track.frame_id == 'Home') then
+        msg.info('transforming track',dump(track),'from"'..frame_id..'" to "Home"')
         track = self:transform_to_home(track)
+        msg.info('result:',dump(track))
     end
     if self.transformations[frame_id] then
+        msg.info('transforming track',dump(track),'from "Home" to "'..frame_id..'"')
         local result = transform_2d_pose(track,self.transformations[frame_id])
+        msg.info('result:',dump(result))
         result.frame_id = frame_id
         return result
     end
@@ -72,6 +90,24 @@ function Tf:deserialize(string)
         end
     end
     return result
+end
+function Tf:calculate4PointTFforBigMap(x1, y1, x2, y2, x3, y3, x4, y4)
+    local T_vga_bm = matrix {
+          { 1.826, 0, x1},
+          { 0, 1.826, y1},
+          { 0,     0,   1}
+        }
+    local T_sm_bm = matrix {
+          { 3.4687, 0, 0},
+          { 0, 3.4687, 0},
+          { 0,      0, 1}
+        }
+    local T_h_sm = matrix {
+          {0, 100, 114},
+          {100, 0, 44}, 
+          {0, 0, 1}     
+        }
+    return matrix.invert(matrix.invert(T_h_sm) * matrix.invert(T_sm_bm) * T_vga_bm)
 end
 
 return Tf

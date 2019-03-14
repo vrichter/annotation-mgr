@@ -146,6 +146,16 @@ function save_annotation_for_file(path)
         save_json_to_file(filename .. opts.annotation_suffix, document)
     end
 end
+function ensure_frames_set()
+    for name,track in pairs(_data.tracks) do
+        for time, position in pairs(track.data) do
+            if not position['frame_id'] then
+                position['frame_id'] = _data.file
+                _data.tracks_changed = true
+            end
+        end
+    end
+end
 function load_annotation_for_file(path, file)
     local filename = path .. "/" .. file
     msg.info('loading annotation for file:', filename)
@@ -156,6 +166,7 @@ function load_annotation_for_file(path, file)
         _data.tracks = {}
     end
     _data.tracks_changed = false
+    ensure_frames_set()
     load_transformable_annotations()
     _gui:update_data(_data)
     mp.set_property_native('pause',pause_state)

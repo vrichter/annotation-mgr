@@ -21,6 +21,19 @@ local function generate_playlist_entries()
     end
     return result
 end
+local function pairsByKeys (t, f)
+    local a = {}
+    for n in pairs(t) do table.insert(a, n) end
+    table.sort(a, f)
+    local i = 0      -- iterator variable
+    local iter = function ()   -- iterator function
+        i = i + 1
+        if a[i] == nil then return nil
+        else return a[i], t[a[i]]
+        end
+    end
+    return iter
+end
 function Menu:menu_action(handler, vx, vy)
     menu_list = {
         context_menu = {
@@ -64,17 +77,27 @@ function Menu:menu_action(handler, vx, vy)
     -- visualizations
     local transformable = handler.get_transformable()
     local first = true
-    for name, active in pairs(transformable) do
+    for name, active in pairsByKeys(transformable) do
         if first then
             table.insert(menu_list.context_menu, {"cascade", "Show other annotations", "show_transformable_menu", "", "", false})
             menu_list.show_transformable_menu = {}
             first = false
         end
-        local prefix = active and '> ' or ''
+        local set_transformable_and_update = function(handler, name, menu, position) 
+            local activate = (menu[position][3] == "")
+            handler.set_transformable(name, activate)
+            menu[position][2] = name
+            if activate then
+                menu[position][3] = "+"
+            else
+                menu[position][3] = ""
+            end
+        end
+        local pos = #(menu_list.show_transformable_menu)
         table.insert(menu_list.show_transformable_menu, {
-            "command", prefix .. name, "", 
-            function() handler.set_transformable(name, not active) end, 
-            "", false})
+            "command", name, (active and "+" or ""), 
+            function() set_transformable_and_update(handler, name, menu_list.show_transformable_menu, pos+1) end, 
+            "", false, true})
         
     end
 
