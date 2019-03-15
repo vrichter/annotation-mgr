@@ -3,6 +3,7 @@ local opts = {
     person_tracking_file = "person-tracking-results.json",
     annotation_suffix = "-tracking-annotation.json",
     tf_filename = "transformations.json",
+    td_filename = "time-deltas.json",
 }
 (require 'mp.options').read_options(opts,"annotation")
 
@@ -15,6 +16,8 @@ local dump = require 'dump'
 local os = require 'os'
 local menu = require 'menu'
 local transform = require 'tf'
+local time_deltas = require 'td'
+local json = require 'dependencies/json'
 
 local debug = require 'debug'
 
@@ -30,7 +33,8 @@ _data = {
     tracks_changed = false,
     tf = transform:new(),
     transformable = {},
-    show_transformable = {}
+    show_transformable = {},
+    time_deltas = time_deltas:new()
 }
 _gui = Gui:new()
 
@@ -67,7 +71,7 @@ end
 function check_file_exists(filename)
     local info = utils.file_info(filename)
     if (not info) or (not info['is_file']) then
-        msg.info('file not found or is not regular file.')
+        msg.info('file "' .. filename .. '" not found or is not regular file.')
         return false
     end
     return true
@@ -101,11 +105,13 @@ function load_transformable_annotations()
             local filename = _data.dir .. '/' .. key .. opts.annotation_suffix
             if (key ~= _data.file) and check_file_exists(filename) then
                 if _data.transformable[key] then
-                    tf_new[key] = _data.transformable[key]
                     show_new[key] = _data.show_transformable[key]
-                else
-                    tf_new[key] = Track:deserialize_tracks(read_string_from_file(filename))
                 end
+                tf_new[key] = _data.time_deltas:adapt_track_times(
+                    Track:deserialize_tracks(read_string_from_file(filename)),
+                    key,
+                    _data.file
+                )
             else
                 show_new[key] = nil
             end
@@ -119,6 +125,13 @@ function load_transformations(dir)
     _data.tf = transform:deserialize(read_string_from_file(tf_path))
     return tf
 end
+function load_time_deltas(dir)
+    local td_path = dir .. opts.td_filename
+    local data = read_string_from_file(td_path)
+    if not data then return end
+    _data.time_deltas = time_deltas:deserialize(data)
+    return tf
+end
 function load_config_from_dir(dir)
     local pause_state = mp.get_property_native('pause')
     msg.info('pausing for config load')
@@ -126,6 +139,7 @@ function load_config_from_dir(dir)
     _gui:update_data(_data)
     msg.info('loading configuration from:',dir)
     load_transformations(dir)
+    load_time_deltas(dir)
     local pt = load_person_tracking(dir)
     if not (pt == nil) then
         _data.person_tracking = pt
@@ -447,10 +461,9 @@ function if_ready(f)
     end
 end
 
---function on_tick()
-    --msg.info("tick was triggered")
-    --msg.info('time in tick:',mp.get_property_native('time-pos'))
---end
+function on_tick()
+    msg.info('time in tick:',mp.get_property_native('time-pos'))
+end
 
 function on_frame(name,data)
     msg.info(dump_pp(data))
