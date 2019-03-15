@@ -425,7 +425,11 @@ menu_handler.get_transformable = function()
     return result
 end
 menu_handler.set_transformable = function(name, boolean)
-    _data.show_transformable[name] = boolean
+    if (boolean == true) then
+        _data.show_transformable[name] = true
+    else
+        _data.show_transformable[name] = nil
+    end
     _gui.modified = true
 end
 function right_click_handler(vx,vy,event)
