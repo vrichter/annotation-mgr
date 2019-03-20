@@ -1,4 +1,5 @@
 local dump = require 'dump'
+
 local msg = require 'msg'
 local matrix = require 'dependencies/matrix'
 local json = require 'dependencies/json'
@@ -26,23 +27,36 @@ local function transform_2d_pose(pose, tf)
     if not pose.rad then 
         local point = homogenize(tf * matrix {{pose.x}, {pose.y}, {1}})
         return {x = point[1][1], y = point[2][1]}
+    elseif true then
+        local cosr = math.cos(pose.rad)
+        local sinr = math.sin(pose.rad)
+        local tp = matrix({{cosr, -sinr, pose.x},{sinr, cosr, pose.y},{0,0,1}})
+        local tfp = tf * tp
+        local center = homogenize(tfp * matrix {{0}, {0}, {1}})
+        local dir_point = homogenize(tfp * matrix {{ 1 }, { 0 }, { 1 }})
+        local direction = dir_point - center
+        local rotation = math.atan2(direction[2][1],direction[1][1])
+        return {x = center[1][1], y = center[2][1], rad = rotation}
     else
-        local point = homogenize(tf * matrix {{pose.x}, {pose.y}, {1}})
-        local dir_point0 = homogenize(tf * matrix {{ 0 }, { 0 }, { 1 }})
-        local dir_point1 = homogenize(tf * matrix {{ 0 }, { 1 }, { 1 }})
-        local dir_point3 = dir_point1 - dir_point0
-        local rotation = math.atan2(dir_point3[1][1],dir_point3[2][1]) + pose.rad
-        return {x = point[1][1], y = point[2][1], rad = rotation}
+       local point = homogenize(tf * matrix({{pose.x},{pose.y},{1}}))
+       local dir_point = homogenize(tf * matrix({pose.x + {math.cos(pose.rad)},{ pose.y + math.sin(pose.rad)},{1}}))
+       local direction = dir_point - point
+       local rotation = math.atan2(direction[2][1],direction[1][1])
+       return {x = point[1][1], y = point[2][1], rad = rotation}
     end
 end
 function Tf:transform_to_home(track)
     assert(self.transformations[track.frame_id])
     local home_tf = matrix.invert(self.transformations[track.frame_id])
     assert(home_tf)
-    return transform_2d_pose(track, home_tf)
+    local result = transform_2d_pose(track, home_tf)
+    result.frame_id = 'Home'
+    msg.error('\n---',dump(track),'\n---',dump(result),'\n---', dump(transform_2d_pose(result, matrix.invert(home_tf))))
+    return result
 end
 function Tf:transform_to(track, frame_id)
-    if (not (track.frame_id)) or (not (frame_id)) or (track.frame_id == frame_id)  then return track end
+    if (not (track.frame_id)) or (not (frame_id)) then return track end
+    if (track.frame_id == frame_id)  then return track end
     local home = matrix {{1,0,0},{0,1,0},{0,0,1}}
     local from = 'Home'
     if not (track.frame_id == from) then
@@ -53,10 +67,11 @@ function Tf:transform_to(track, frame_id)
         from = track.frame_id
     end
     if self.transformations[frame_id] then
-        --msg.info('transforming track',dump(track),'from "' .. from .. '" to "'..frame_id..'"')
+        msg.info('transforming track',dump(track),'from "' .. from .. '" to "'..frame_id..'"')
         local result = transform_2d_pose(track,self.transformations[frame_id] * home)
-        --msg.info('result:',dump(result))
+        msg.info('result:',dump(result))
         result.frame_id = frame_id
+        msg.error('\n---',dump(track),'\n---',dump(result))
         return result
     end
     assert(false)

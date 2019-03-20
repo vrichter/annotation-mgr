@@ -17,12 +17,21 @@ function Track:new(o)
     o.id = uuid.new()
     return o
 end
+local function normalize_rotation(radian)
+    if not radian then return nil end
+    return math.atan2(math.sin(radian),math.cos(radian))
+    --local normalized = 0
+    --if radian >= 0 then
+    --    return radian % (2*math.pi)
+    --else
+    --    return (2*math.pi) - (math.abs(radian) % (2*math.pi))
+    --end
+end
 function Track:add_annotation(time,x_postition,y_position,rotation_radian,frame_id)
     assert(time)
     assert(x_postition)
     assert(y_position)
-    rotation_radian = rotation_radian
-    Track.add(self,time,{x=x_postition,y=y_position,rad=rotation_radian,frame_id=frame_id})
+    Track.add(self,time,{x=x_postition,y=y_position,rad=normalize_rotation(rotation_radian),frame_id=frame_id})
 end
 function Track:remove_annotation(time)
     assert(time)
@@ -50,7 +59,7 @@ function Track:interpolate(p,n,dt_before,dt_after)
     local na = n.rad
     local vx = (nx-px)/(dt_before+dt_after)
     local vy = (ny-py)/(dt_before+dt_after)
-    return { x=(px+vx*dt_before), y=(py+vy*dt_before), rad=self:interpolate_angles(pa,na,dt_before/(dt_before+dt_after)), frame_id=p.frame_id }
+    return { x=(px+vx*dt_before), y=(py+vy*dt_before), rad=normalize_rotation(self:interpolate_angles(pa,na,dt_before/(dt_before+dt_after))), frame_id=p.frame_id }
 end
 function Track:position(time)
     assert(time)
@@ -98,13 +107,16 @@ function Track:serialize(do_not_encode)
     for key, value in pairs(self.data) do
         table.insert(annotations, {time = key, x = value.x, y = value.y, rad = value.rad, frame_id = value.frame_id})
     end
-    local data = {
-        id = self.id, 
-        person_id = self.person_id, 
-        start_time = self.start_time, 
-        end_time = self.end_time,
-        annotations = annotations
-    }
+    local data = {}
+    if annotations[1] then -- only create annotation when it contains data
+        data = {
+            id = self.id, 
+            person_id = self.person_id, 
+            start_time = self.start_time, 
+            end_time = self.end_time,
+            annotations = annotations
+        }
+    end
     if do_not_encode then return data else return json.encode(data) end
 end
 function Track:serialize_tracks(tracks, do_not_encode)
@@ -120,17 +132,21 @@ function Track:deserialize_tracks(data)
     parsed = utils.parse_json(data)
     if not parsed then msg.error("could not parse as json: ", data); return result; end
     for key, parsed_track in pairs(parsed) do
-        assert(parsed_track.annotations)
-        assert(parsed_track.id)
-        local track = Track:new()
-        track.id = parsed_track.id
-        track.person_id = parsed_track.person_id
-        track.start_time = parsed_track.start_time
-        track.end_time = parsed_track.end_time
-        for key, parsed_annotation in pairs(parsed_track.annotations) do
-            track:add_annotation(parsed_annotation.time, parsed_annotation.x, parsed_annotation.y, parsed_annotation.rad, parsed_annotation.frame_id)
+        if not parsed_track.annotations then 
+            msg.warn("skipping parsed track. does not contatin anntation: ", dump_pp(parsed_track))
+        elseif not parsed_track.id then
+            msg.warn("skipping parsed track. does not contatin id: ", dump_pp(parsed_track))
+        else
+            local track = Track:new()
+            track.id = parsed_track.id
+            track.person_id = parsed_track.person_id
+            track.start_time = parsed_track.start_time
+            track.end_time = parsed_track.end_time
+            for key, parsed_annotation in pairs(parsed_track.annotations) do
+                track:add_annotation(parsed_annotation.time, parsed_annotation.x, parsed_annotation.y, normalize_rotation(parsed_annotation.rad), parsed_annotation.frame_id)
+            end
+            result[track.id] = track
         end
-        result[track.id] = track
     end
     return result
 end

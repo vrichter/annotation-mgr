@@ -52,26 +52,22 @@ function Menu:menu_action(handler, vx, vy)
     }
 
     -- track interaction
-    local marked_track = handler.marked_track()
-    if marked_track then
-        table.insert(menu_list.context_menu, {"command", "Unmark track", "ESC", function () handler.mark_track(nil) end, "", false, false})
+    local next_track = handler.find_annotation_next_to(vx,vy)
+    if next_track then
+        table.insert(menu_list.context_menu, {"command", "Mark track", "MBTN_RIGHT", function () handler.mark_track(next_track) end, "", false, false})
+        table.insert(menu_list.context_menu, {"command", "Toggle endpoint", "ESC", function () handler.toggle_endpoint(next_track) end, "", false, false})
         table.insert(menu_list.context_menu, {"cascade", "Set Person Id", "person_id_menu", "", "", false})
         menu_list.person_id_menu = {}
         for name, ignored in pairs(handler.get_person_ids()) do
             table.insert(menu_list.person_id_menu, {
                 "command", name, "", 
-                function() handler.set_person_id(marked_track.id, name) end, 
-                "", (name == marked_track.person_id)})
+                function() handler.set_person_id(next_track.id, name) end, 
+                "", (name == next_track.person_id)})
         end
         table.insert(menu_list.person_id_menu, {
             "command", "-- enter new name", "", 
-            function() handler.set_person_id(marked_track.id, self.name_dialog()) end, 
+            function() handler.set_person_id(next_track.id, self.name_dialog()) end, 
             "", false})
-    else
-        local next = handler.find_annotation_next_to(vx, vy)
-        if (next) then
-            table.insert(menu_list.context_menu, {"command", "Mark track", "MBTN_RIGHT", function () handler.mark_track(next) end, "", false, false})
-        end
     end
 
     -- visualizations
@@ -98,7 +94,13 @@ function Menu:menu_action(handler, vx, vy)
             "command", name, (active and "+" or ""), 
             function() set_transformable_and_update(handler, name, menu_list.show_transformable_menu, pos+1) end, 
             "", false, true})
-        
+    end
+    
+    -- show person tracks
+    if handler.show_persons() then
+        table.insert(menu_list.context_menu, {"command", "Hide persons", "", function () handler.set_show_persons(false) end, "", false, false})
+    else
+        table.insert(menu_list.context_menu, {"command", "Show persons", "", function () handler.set_show_persons(true) end, "", false, false})
     end
 
 

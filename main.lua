@@ -4,6 +4,7 @@ local opts = {
     annotation_suffix = "-tracking-annotation.json",
     tf_filename = "transformations.json",
     td_filename = "time-deltas.json",
+    jump_next_min_delta_ms = 10,
 }
 (require 'mp.options').read_options(opts,"annotation")
 
@@ -18,6 +19,7 @@ local menu = require 'menu'
 local transform = require 'tf'
 local time_deltas = require 'td'
 local json = require 'dependencies/json'
+local person = require 'person'
 
 local debug = require 'debug'
 
@@ -34,7 +36,10 @@ _data = {
     tf = transform:new(),
     transformable = {},
     show_transformable = {},
-    time_deltas = time_deltas:new()
+    time_deltas = time_deltas:new(),
+    persons = person:new(),
+    show_persons = false,
+    annotate_tracks = true
 }
 _gui = Gui:new()
 
@@ -119,6 +124,9 @@ function load_transformable_annotations()
     end
     _data.transformable = tf_new
     _data.show_transformable = show_new
+    local person_tracks = {_data.tracks}
+    for k,v in pairs(tf_new) do table.insert(person_tracks,v) end
+    _data.persons = person:create_from_tracks(person_tracks, _data.tf)
 end
 function load_transformations(dir)
     local tf_path = dir .. opts.tf_filename
@@ -205,8 +213,8 @@ function data_remove_track(track)
     _gui:update_data(_data)
     _data.tracks_changed = true
 end
-function data_add_annotation(id,time,x,y,r)
-    msg.info('add annotation:',id,time,x,y,r)
+function data_add_annotation(id,time,x,y,r,frame)
+    msg.info('add annotation:',id,time,x,y,r,frame)
     if not _data.tracks[id] then
         msg.warn("id:" .. id .. " not found in tracks: " .. dump_pp(_data.tracks))
         return 
@@ -218,9 +226,10 @@ function data_add_annotation(id,time,x,y,r)
         x = x or current.x
         y = y or current.y
         r = r or current.rad
+        frame = frame or _data.file
     end
     msg.info('current:',dump(current),'r',r)
-    _data.tracks[id]:add_annotation(time,x,y,r)
+    _data.tracks[id]:add_annotation(time,x,y,r,frame)
     _gui:update_data(_data)
     _data.tracks_changed = true
 end
@@ -250,7 +259,7 @@ function find_annotation_next_to(vx,vy,max_dist)
     local next = nil
     local min_dist = nil
     local time = _data.time
-    for key, track in pairs(_data.tracks) do
+for key, track in pairs(_data.tracks) do
         local track_pos = (track:position(time)).position
         if not (track_pos == nil) then
             local transformed = _data.tf:transform_to(track_pos, _data.file)
@@ -275,18 +284,18 @@ function remove_track_annotation(vx,vy)
         data_remove_annotation(next.id,_data.time)
     end
 end
-function move_track(vx, vy)
+function move_track(track, vx, vy)
     assert(vx)
     assert(vy)
-    data_add_annotation(_gui.marked_track.id,_data.time,vx,vy)
+    data_add_annotation(track.id,_data.time,vx,vy)
 end
-function rotate_track(vx, vy)
+function rotate_track(track, vx, vy)
     assert(vx)
     assert(vy)
-    local position = (_gui.marked_track:position(_data.time)).position
+    local position = (track:position(_data.time)).position
     local rad = _gui:tr_rotation_from_points_rad(position.x,position.y,vx,vy)
     -- rotate marked track
-    data_add_annotation(_gui.marked_track.id,_data.time,position.x,position.y,rad)
+    data_add_annotation(track.id,_data.time,position.x,position.y,rad)
 end
 function reset_end(annotation, time)
     local changed = false
@@ -320,12 +329,12 @@ function set_end(annotation, time, vx, vy)
     end
     return changed
 end
-function toggle_end(vx, vy)
-    local annotation = find_annotation_next_to(vx,vy,_gui.opts.position_size/2)
-    if (annotation) then
+function toggle_end(track)
+    --local annotation = find_annotation_next_to(vx,vy,_gui.opts.position_size/2)
+    if (track) then
         local time = _data.time
-        if(reset_end(annotation, time)) then return true end
-        if(set_end(annotation, time, vx, vy)) then return true end
+        if(reset_end(track, time)) then return true end
+        if(set_end(track, time, vx, vy)) then return true end
       end
     return false
 end
@@ -356,37 +365,6 @@ function find_previous_neighbour_annotation(time)
         end
     end
     return max_previous
-end
-function ctrl_left_click_handler(vx,vy,event)
-    add_track_annotation(vx,vy)
-end
-function ctrl_right_click_handler(vx,vy,event)
-    remove_track_annotation(vx,vy)
-end
-function left_click_handler(vx,vy,event)
-    if _gui.marked_track then
-        -- call function and unmark track
-        move_track(vx,vy)
-        _gui.marked_track = nil
-        _gui.modified = true
-    else
-        -- mark track
-        _gui.marked_track = find_annotation_next_to(vx,vy,_gui.opts.position_size/2)
-        _gui.modified = true
-    end
-end
-function shift_right_click_handler(vx,vy,event)
-    if _gui.marked_track then
-        -- call function and unmark track
-        rotate_track(vx,vy)
-        _gui.marked_track = nil
-        _gui.modified = true
-    else
-        local changed = toggle_end(vx,vy)
-        if (changed) then
-            _gui.modified = true
-       end
-    end
 end
 menu_handler = {}
 menu_handler.set_person_id = function(track_id, person_id)
@@ -432,29 +410,71 @@ menu_handler.set_transformable = function(name, boolean)
     end
     _gui.modified = true
 end
+menu_handler.toggle_endpoint = function(track)
+    local changed = toggle_end(track)
+    if changed then
+        _data.tracks_changed = true
+    end
+    _gui.modified = true
+end
+menu_handler.show_persons = function()
+    return _data.show_persons
+end
+menu_handler.set_show_persons = function(bool)
+    _data.show_persons = bool
+    _gui.modified = true
+end
+function ctrl_left_click_handler(vx,vy,event)
+    add_track_annotation(vx,vy)
+end
+function ctrl_right_click_handler(vx,vy,event)
+    remove_track_annotation(vx,vy)
+end
+function left_click_handler(vx,vy,event)
+    if not _gui.marked_track then
+        _gui.marked_track = find_annotation_next_to(vx,vy,_gui.opts.position_size/2)
+    else 
+        move_track(_gui.marked_track, vx, vy)
+        _gui.marked_track = nil
+        _gui.modified = true
+    end
+    _gui.modified = true
+end
+
 function right_click_handler(vx,vy,event)
-    local menu_inst = menu:new({})
-    menu:menu_action(menu_handler, vx, vy)
+    if not _gui.marked_track then
+        local menu_inst = menu:new({})
+        menu:menu_action(menu_handler, vx, vy)
+    else 
+        rotate_track(_gui.marked_track,vx,vy)
+        _gui.marked_track = nil
+        _gui.modified = true
+    end
 end
 function escape_handler()
     _gui.marked_track = nil
     _gui.modified = true
 end
 function end_handler()
-    local next = find_next_neighbour_annotation(_data.time)
+    local next = find_next_neighbour_annotation(_data.time+opts.jump_next_min_delta_ms)
     if next then
         msg.info('now: '.. _data.time .. ' goto next annotation: ' .. next.time)
         mp.set_property('time-pos',next.time/1000)
     end
 end
 function home_handler()
-    local previous = find_previous_neighbour_annotation(_data.time)
+    local previous = find_previous_neighbour_annotation(_data.time-opts.jump_next_min_delta_ms)
     if previous then
         msg.info('now: ' .. _data.time .. ' goto previous annotation: ' .. previous.time)
         mp.set_property('time-pos',previous.time/1000)
     end
 end
-
+function ctrl_s_handler(vx,vy,event)
+    if (_data.dir ~= nil) and (_data.file ~= nil) then
+        save_annotation_for_file(_data.dir .. '/' .. _data.file)
+        _data.tracks_changed = false
+    end
+end
 function if_ready(f)
     return function(...)
         if _data.ready then
@@ -478,7 +498,9 @@ _gui:add_mouse_binding("Ctrl+MBTN_LEFT", "ctrl_left_click_handler", if_ready(ctr
 _gui:add_mouse_binding("Ctrl+MBTN_RIGHT", "ctrl_right_click_handler", if_ready(ctrl_right_click_handler))
 _gui:add_mouse_binding("MBTN_LEFT", "left_click_handler", if_ready(left_click_handler))
 _gui:add_mouse_binding("MBTN_RIGHT", "right_click_handler", if_ready(right_click_handler))
-_gui:add_mouse_binding("Shift+MBTN_RIGHT", "shift_right_click_handler", if_ready(shift_right_click_handler))
+_gui:add_mouse_binding("Shift+MBTN_LEFT", "shift_left_click_handler", if_ready(shift_left_click_handler))
+--_gui:add_mouse_binding("Shift+MBTN_RIGHT", "shift_right_click_handler", if_ready(shift_right_click_handler))
+_gui:add_key_binding("Ctrl+s", "ctrl_s_handler", if_ready(ctrl_s_handler))
 _gui:add_key_binding("ESC", "escape_handler", if_ready(escape_handler))
 _gui:add_key_binding("END", "end_handler", if_ready(end_handler))
 _gui:add_key_binding("HOME", "home_handler", if_ready(home_handler))

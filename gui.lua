@@ -2,6 +2,7 @@
 local opts = {
     position_size = 50,
     track_pos_color_annotation = '#5b268f66',
+    track_pos_color_person = '#ffffff',
     track_pos_color_interpolated = '#26268f66',
     track_pos_color_endpoint = '#8f8f2666',
     track_pos_color_selected = '#8f262666',
@@ -222,31 +223,35 @@ function Gui:render_track_position(ass, px, py, rad, size, color, person_id)
     end
 end
 
-function Gui:transform_and_draw_track(ass, track, time, tf, tf_target, size, main)
-    local color_border = main and opts.track_pos_color_border or opts.track_pos_color_border_alt
-    size = main and size or size*0.5
+function Gui:transform_and_draw_track(ass, track, time, tf, tf_target, ref_size, type)
     local track_position = track:position(time)
-    if (track_position) then 
-        local position = track_position.position
-        local interpolated = track_position.interpolated
-        local track_endpoint = track_position.endpoint
-        if position then
-            local color = {border = color_border}
-            if self.marked_track and (track.id == self.marked_track.id) then
-                color.primary = opts.track_pos_color_selected
-            elseif interpolated then
-                color.primary = opts.track_pos_color_interpolated
-            elseif track_endpoint then
-                color.primary = opts.track_pos_color_endpoint
-            else
-                color.primary = opts.track_pos_color_annotation
-            end
-            local transformed_position = tf:transform_to(position,tf_target)
-            --msg.info('track',dump(position),'transformed to',tf_target,dump(transformed_position))
-            local px, py = self:tr_track_to_px(transformed_position)
-            self:render_track_position(ass, px, py, transformed_position.rad, size, color, track.person_id)
-        end
+    if (not track_position) or (not track_position.position) then return end
+    local position = track_position.position
+    local interpolated = track_position.interpolated
+    local track_endpoint = track_position.endpoint
+    local size = ref_size
+    local color = {}
+    color.border = opts.track_pos_color_border
+    if self.marked_track and (track.id == self.marked_track.id) then
+        color.primary = opts.track_pos_color_selected
+    elseif interpolated then
+        color.primary = opts.track_pos_color_interpolated
+    elseif track_endpoint then
+        color.primary = opts.track_pos_color_endpoint
+    else
+        color.primary = opts.track_pos_color_annotation
     end
+    if type == "transformed_annotation" then
+        size = size/2
+        color.border = opts.track_pos_color_border_alt
+    elseif type == "person" then
+        color.primary = opts.track_pos_color_person
+    end
+    msg.error(dump_pp(position))
+    local transformed_position = tf:transform_to(position,tf_target)
+    msg.error(dump_pp(transformed_position))
+    local px, py = self:tr_track_to_px(transformed_position)
+    self:render_track_position(ass, px, py, transformed_position.rad, size, color, track.person_id)
 end
 
 function Gui:draw_track_positions(ass,data)
@@ -258,20 +263,21 @@ function Gui:draw_track_positions(ass,data)
     if not time then return end
     time = math.floor(time*1000)
     for key, track in pairs(tracks) do
-        self:transform_and_draw_track(ass, track, time, tf, tf_target, size, true)
+        self:transform_and_draw_track(ass, track, time, tf, tf_target, size, "main_annotation")
     end
     for name, render in pairs(data.show_transformable) do
         if render and (data.transformable[name]) then
             for key, track in pairs(data.transformable[name]) do
-               self:transform_and_draw_track(ass, track, time, tf, tf_target, size, false)
+               self:transform_and_draw_track(ass, track, time, tf, tf_target, size, "transformed_annotation")
             end
         end
     end
+    if _data.show_persons then
+        for k, person in pairs(_data.persons) do
+            self:transform_and_draw_track(ass, person, time, tf, tf_target, size, "person")
+        end
+    end
     ass:draw_stop()
-end
-
-function Gui:draw_tracking_positions(ass)
-
 end
 
 function Gui:render_text_only(text)
@@ -289,7 +295,6 @@ end
 function Gui:render_tracks(data)
     local ass = assdraw.ass_new()
     self:draw_track_positions(ass,data)
-    --self:draw_tracking_positions(ass,tracking)
     mp.set_osd_ass(self:property('osd-width'), self:property('osd-height'), ass.text)
 end
 
