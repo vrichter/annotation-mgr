@@ -11,13 +11,16 @@ function Menu:new(o)
     self.__index = self
     return o
 end
-local function generate_playlist_entries()
+local function generate_playlist_entries(handler)
     local result = {}
     local playlist = mp.get_property_native('playlist')
     for key, playlist_entry in pairs(playlist) do
         table.insert(result, { 
             "command", playlist_entry.filename, "", 
-            function() mp.set_property_number("playlist-pos",key-1) end, "", not (playlist_entry.current == nil)})
+            function() 
+                handler.save_track_position()
+                mp.set_property_number("playlist-pos",key-1) 
+            end, "", not (playlist_entry.current == nil)})
     end
     return result
 end
@@ -44,11 +47,11 @@ function Menu:menu_action(handler, vx, vy)
             {"command", "Play/Pause", "Space", "cycle pause", "", false},
             {"command", "Stop", "Ctrl+Space", "stop", "", false},
             {"separator"},
-            {"command", "Previous", "<", "playlist-prev", "", false},
-            {"command", "Next", ">", "playlist-next", "", false},
+            {"command", "Previous", "<", handler.playlist_previous, "", false},
+            {"command", "Next", ">", handler.playlist_next, "", false},
             {"cascade", "Playlist", "playlist", "", "", false},
         },
-        playlist = generate_playlist_entries()
+        playlist = generate_playlist_entries(handler)
     }
 
     -- track interaction

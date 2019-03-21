@@ -39,7 +39,9 @@ _data = {
     time_deltas = time_deltas:new(),
     persons = person:new(),
     show_persons = false,
-    annotate_tracks = true
+    annotate_tracks = true,
+    last_track_time_pos = nil,
+    last_track_time_delta = nil
 }
 _gui = Gui:new()
 
@@ -71,6 +73,8 @@ function observe_path(name, data)
         update_config_for_file(dir,file)
         _gui.marked_track = nil
     end
+    wait_for_video_to_start()
+    goto_last_track_position()
     _data.ready = true
 end
 function check_file_exists(filename)
@@ -195,6 +199,27 @@ function load_annotation_for_file(path, file)
 end
 function update_config_for_file(path,file)
     load_annotation_for_file(path,file)
+end
+function wait_for_video_to_start()
+    local last = os.date('%s')
+    while not mp.get_property_native('time-pos') do
+        local now = os.date('%s')
+        if now ~= last then
+            msg.warn('waiting for video to start')
+            last = now
+        end
+    end
+end
+function goto_last_track_position()
+    local goto_time = _data.last_track_time_pos
+    if not goto_time then return end
+    local old_delta = _data.last_track_time_delta or 0
+    local new_delta = _data.time_deltas.time_deltas[_data.file] or 0
+    local goto_time = goto_time - old_delta + new_delta
+    if goto_time > 0. then
+        mp.set_property('time-pos',goto_time/1000)
+    end
+    unset_current_track_time()
 end
 mp.observe_property("path", native, observe_path)
 function on_shutdown()
@@ -424,6 +449,17 @@ menu_handler.set_show_persons = function(bool)
     _data.show_persons = bool
     _gui.modified = true
 end
+menu_handler.playlist_next = function()
+    set_current_track_time()
+    mp.command('playlist-next')
+end
+menu_handler.playlist_previous = function()
+    set_current_track_time()
+    mp.command('playlist-prev')
+end
+menu_handler.save_track_position = function()
+    set_current_track_time()
+end
 function ctrl_left_click_handler(vx,vy,event)
     add_track_annotation(vx,vy)
 end
@@ -475,6 +511,14 @@ function ctrl_s_handler(vx,vy,event)
         _data.tracks_changed = false
     end
 end
+function unset_current_track_time()
+    _data.last_track_time_pos = nil
+    _data.last_track_time_delta = nil
+end
+function set_current_track_time()
+    _data.last_track_time_pos = _data.time
+    _data.last_track_time_delta = _data.time_deltas.time_deltas[_data.file]
+end
 function if_ready(f)
     return function(...)
         if _data.ready then
@@ -505,5 +549,7 @@ _gui:add_key_binding("ESC", "escape_handler", if_ready(escape_handler))
 _gui:add_key_binding("END", "end_handler", if_ready(end_handler))
 _gui:add_key_binding("HOME", "home_handler", if_ready(home_handler))
 _gui:add_key_binding("n", "name_handler", if_ready(name_handler))
+_gui:add_key_binding(">", "playlist_next", if_ready(menu_handler.playlist_next))
+_gui:add_key_binding("<", "playlist_previous", if_ready(menu_handler.playlist_previous))
 _gui:add_time_binding(function(time) _data.time = math.floor(time*1000) end)
 --mp.register_event("tick", on_tick)
