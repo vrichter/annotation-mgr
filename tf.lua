@@ -28,21 +28,45 @@ local function transform_2d_pose(pose, tf)
         local point = homogenize(tf * matrix {{pose.x}, {pose.y}, {1}})
         return {x = point[1][1], y = point[2][1]}
     elseif true then
-        local cosr = math.cos(pose.rad)
-        local sinr = math.sin(pose.rad)
+        local rad = pose.rad
+        local cosr = math.cos(rad)
+        local sinr = math.sin(rad)
+        local cosp2 = math.cos(math.pi/2)
+        local sinp2 = math.sin(math.pi/2)
+        -- annotated radian rotations are relative to the negative y axis and reflected at the x axis *facepalm*!
+        --local tp = matrix({{cosr, -sinr, pose.x},{sinr, cosr, pose.y},{0,0,1}}) * matrix({{1,0,0},{0,-1,0},{0,0,1}}) * matrix({{cosp2,-sinp2,0},{sinp2,cosp2,0},{0,0,1}})
         local tp = matrix({{cosr, -sinr, pose.x},{sinr, cosr, pose.y},{0,0,1}})
         local tfp = tf * tp
         local center = homogenize(tfp * matrix {{0}, {0}, {1}})
         local dir_point = homogenize(tfp * matrix {{ 1 }, { 0 }, { 1 }})
+        --
+        local x_ax = homogenize(tfp * matrix {{ 1 }, { 0 }, { 1 }})
+        local y_ax = homogenize(tfp * matrix {{ 0 }, { 1 }, { 1 }})
+        local  dir = homogenize(tfp * matrix {{ math.cos(rad) }, { math.sin(rad) }, { 1 }})
+        msg.error('xd:',x_ax)
+        msg.error('xd:',y_ax)
+        msg.error(' c:',center)
+        msg.error('od:',dir)
+        --
         local direction = dir_point - center
         local rotation = math.atan2(direction[2][1],direction[1][1])
         return {x = center[1][1], y = center[2][1], rad = rotation}
     else
-       local point = homogenize(tf * matrix({{pose.x},{pose.y},{1}}))
-       local dir_point = homogenize(tf * matrix({pose.x + {math.cos(pose.rad)},{ pose.y + math.sin(pose.rad)},{1}}))
-       local direction = dir_point - point
-       local rotation = math.atan2(direction[2][1],direction[1][1])
-       return {x = point[1][1], y = point[2][1], rad = rotation}
+        local rad = pose.rad
+        local original_point = matrix({{pose.x},{pose.y},{1}})
+        --local original_dir_point = matrix({{pose.x + math.cos(rad)},{ pose.y + math.sin(rad)},{1}})
+        local original_dir_point = matrix({{pose.x + math.cos(rad)},{ pose.y + math.sin(rad)},{1}})
+        local point = tf * original_point
+        local dir_point = tf * original_dir_point
+        local direction = dir_point - point
+        msg.error('op:',original_point)
+        msg.error('od:',original_dir_point)
+        msg.error('of:',original_dir_point-original_point)
+        msg.error('np:',point)
+        msg.error('nd:',dir_point)
+        msg.error('nf:',direction)
+        local rotation = math.atan2(direction[2][1],direction[1][1])
+        return {x = point[1][1], y = point[2][1], rad = rotation}
     end
 end
 function Tf:transform_to_home(track)
@@ -71,7 +95,7 @@ function Tf:transform_to(track, frame_id)
         local result = transform_2d_pose(track,self.transformations[frame_id] * home)
         msg.info('result:',dump(result))
         result.frame_id = frame_id
-        msg.error('\n---',dump(track),'\n---',dump(result))
+        msg.error('\n---',dump(track),(180/math.pi*track.rad),'\n---',dump(result),(180/math.pi*result.rad))
         return result
     end
     assert(false)

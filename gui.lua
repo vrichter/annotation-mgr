@@ -135,22 +135,19 @@ function Gui:tr_track_to_px(track)
     return self:tr_video_to_px(track.x, track.y)
 end
 function Gui:tr_rotation_from_points_rad(x_center, y_center, x_dir, y_dir)
-    local xd = x_center-x_dir
-    local yd = y_center-y_dir
-    local norm = math.sqrt((xd^2)+(yd^2))
-    xd = xd/norm
-    yd = yd/norm
-    xz = 0
-    yz = 1
-    local angle = - (math.atan2(yd,xd) - math.atan2(yz,xz))
-    return angle
+    local xd = x_dir-x_center
+    local yd = y_dir-y_center
+    -- y points down in video coordinates
+    local rot = math.atan2(yd,xd)
+    msg.error(rot)
+    return rot
 end
 function Gui:tr_track_to_rotation_rad(rad)
     return track.rad
 end
 function Gui:tr_track_to_rotation_deg(rad)
     if rad then
-        return rad*180/math.pi 
+        return -1*rad*180/math.pi 
     else 
         return nil 
     end
@@ -200,9 +197,12 @@ function Gui:render_track_position(ass, px, py, rad, size, color, person_id)
         ass:append(self:asstools_create_color_from_hex(color))
         ass:pos(0,0)
         ass:draw_start()
-        ass:move_to(px-size/2,py)
-        ass:line_to(px,py-2*size) 
-        ass:line_to(px+size/2,py)
+        --ass:move_to(px-size/2,py)
+        --ass:line_to(px,py-2*size) 
+        --ass:line_to(px+size/2,py)
+        ass:move_to(px,py-size/2)
+        ass:line_to(px+2*size,py) 
+        ass:line_to(px,py+size/2)
         ass:draw_stop()
     else
         ass:append(self:asstools_create_color_from_hex(color))

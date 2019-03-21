@@ -507,6 +507,7 @@ function home_handler()
 end
 function ctrl_s_handler(vx,vy,event)
     if (_data.dir ~= nil) and (_data.file ~= nil) then
+        _data.tracks_changed = true
         save_annotation_for_file(_data.dir .. '/' .. _data.file)
         _data.tracks_changed = false
     end
@@ -552,4 +553,4 @@ _gui:add_key_binding("n", "name_handler", if_ready(name_handler))
 _gui:add_key_binding(">", "playlist_next", if_ready(menu_handler.playlist_next))
 _gui:add_key_binding("<", "playlist_previous", if_ready(menu_handler.playlist_previous))
 _gui:add_time_binding(function(time) _data.time = math.floor(time*1000) end)
---mp.register_event("tick", on_tick)
+mp.register_event("tick", on_tick)

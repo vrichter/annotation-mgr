@@ -19,19 +19,19 @@ function Track:new(o)
 end
 local function normalize_rotation(radian)
     if not radian then return nil end
-    return math.atan2(math.sin(radian),math.cos(radian))
-    --local normalized = 0
-    --if radian >= 0 then
-    --    return radian % (2*math.pi)
-    --else
-    --    return (2*math.pi) - (math.abs(radian) % (2*math.pi))
-    --end
+    local x = math.cos(radian)
+    local y = math.sin(radian)
+    if false then
+        x = -math.cos(radian-math.pi/2)
+        y = math.sin(radian-math.pi/2)
+    end
+    return math.atan2(y,x)
 end
 function Track:add_annotation(time,x_postition,y_position,rotation_radian,frame_id)
     assert(time)
     assert(x_postition)
     assert(y_position)
-    Track.add(self,time,{x=x_postition,y=y_position,rad=normalize_rotation(rotation_radian),frame_id=frame_id})
+    Track.add(self,time,{x=x_postition,y=y_position,rad=rotation_radian,frame_id=frame_id})
 end
 function Track:remove_annotation(time)
     assert(time)
@@ -59,7 +59,7 @@ function Track:interpolate(p,n,dt_before,dt_after)
     local na = n.rad
     local vx = (nx-px)/(dt_before+dt_after)
     local vy = (ny-py)/(dt_before+dt_after)
-    return { x=(px+vx*dt_before), y=(py+vy*dt_before), rad=normalize_rotation(self:interpolate_angles(pa,na,dt_before/(dt_before+dt_after))), frame_id=p.frame_id }
+    return { x=(px+vx*dt_before), y=(py+vy*dt_before), rad=self:interpolate_angles(pa,na,dt_before/(dt_before+dt_after)), frame_id=p.frame_id }
 end
 function Track:position(time)
     assert(time)
