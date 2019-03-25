@@ -75,6 +75,9 @@ function observe_path(name, data)
     end
     wait_for_video_to_start()
     goto_last_track_position()
+    msg.error('memory usage:',collectgarbage('count')..'kbyte')
+    collectgarbage()
+    msg.error('memory usage:',collectgarbage('count')..'kbyte')
     _data.ready = true
 end
 function check_file_exists(filename)
@@ -202,22 +205,30 @@ function update_config_for_file(path,file)
 end
 function wait_for_video_to_start()
     local last = os.date('%s')
+    local count = 0
     while not mp.get_property_native('time-pos') do
         local now = os.date('%s')
         if now ~= last then
             msg.warn('waiting for video to start')
             last = now
+            count = count + 1
+        end
+        if count > 3 then
+            msg.warn('waiting for more than '..count..' seconds for video to start. give up.')
+            return            
         end
     end
 end
 function goto_last_track_position()
-    local goto_time = _data.last_track_time_pos
-    if not goto_time then return end
-    local old_delta = _data.last_track_time_delta or 0
-    local new_delta = _data.time_deltas.time_deltas[_data.file] or 0
-    local goto_time = goto_time - old_delta + new_delta
-    if goto_time > 0. then
-        mp.set_property('time-pos',goto_time/1000)
+    if false then
+        local goto_time = _data.last_track_time_pos
+        if not goto_time then return end
+        local old_delta = _data.last_track_time_delta or 0
+        local new_delta = _data.time_deltas.time_deltas[_data.file] or 0
+        local goto_time = goto_time - old_delta + new_delta
+        if goto_time > 0. then
+            mp.set_property('time-pos',goto_time/1000)
+        end
     end
     unset_current_track_time()
 end
@@ -553,4 +564,4 @@ _gui:add_key_binding("n", "name_handler", if_ready(name_handler))
 _gui:add_key_binding(">", "playlist_next", if_ready(menu_handler.playlist_next))
 _gui:add_key_binding("<", "playlist_previous", if_ready(menu_handler.playlist_previous))
 _gui:add_time_binding(function(time) _data.time = math.floor(time*1000) end)
-mp.register_event("tick", on_tick)
+--mp.register_event("tick", on_tick)
