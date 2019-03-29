@@ -106,6 +106,13 @@ function Menu:menu_action(handler, vx, vy)
         table.insert(menu_list.context_menu, {"command", "Show persons", "", function () handler.set_show_persons(true) end, "", false, false})
     end
 
+    -- print timestamps
+    if handler.print_timestamps() then
+        table.insert(menu_list.context_menu, {"command", "Hide timestamps", "", function () handler.set_print_timestamps(false) end, "", false, false})
+    else
+        table.insert(menu_list.context_menu, {"command", "Print timestamps", "", function () handler.set_print_timestamps(true) end, "", false, false})
+    end
+
 
     -- setting fix points in map
     table.insert(menu_list.context_menu, {"cascade", "Fix point", "fixpoint_menu", "", "", false})

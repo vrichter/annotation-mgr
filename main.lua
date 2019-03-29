@@ -41,7 +41,9 @@ _data = {
     show_persons = false,
     annotate_tracks = true,
     last_track_time_pos = nil,
-    last_track_time_delta = nil
+    last_track_time_delta = nil,
+    selected_audio = {},
+    print_timestamps = false
 }
 _gui = Gui:new()
 
@@ -220,7 +222,7 @@ function wait_for_video_to_start()
     end
 end
 function goto_last_track_position()
-    if false then
+    if true then
         local goto_time = _data.last_track_time_pos
         if not goto_time then return end
         local old_delta = _data.last_track_time_delta or 0
@@ -232,11 +234,34 @@ function goto_last_track_position()
     end
     unset_current_track_time()
 end
-mp.observe_property("path", native, observe_path)
 function on_shutdown()
     save_annotation_for_file(_data.path)
 end
+function find_selected_stream(tracklist, type)
+    for k,v in pairs(tracklist) do
+        if (v.type == type) and (v.selected == true) then
+            return v
+        end
+    end
+end
+function adapt_external_audio_stream(title)
+    local delta = _data.time_deltas:get_time_delta(title, _data.file)/1000.
+    msg.info('adapt audio time:',delta)
+    dump_pp(mp.set_property_native('audio-delay',delta))
+end
+function update_tracklist()
+    local tracklist = mp.get_property_native('track-list')
+    local new_selected_audio = find_selected_stream(tracklist, 'audio')
+    if new_selected_audio then
+        if new_selected_audio.external == true then
+            adapt_external_audio_stream(new_selected_audio.title)
+        end
+    end
+    _data.selected_audio = new_selected_audio
+end
+mp.observe_property("path", native, observe_path)
 mp.register_event('shutdown',on_shutdown)
+mp.register_event('audio-reconfig',update_tracklist)
 
 -- update model
 function data_insert_track(track)
@@ -471,6 +496,12 @@ end
 menu_handler.save_track_position = function()
     set_current_track_time()
 end
+menu_handler.print_timestamps = function()
+    return _data.print_timestamps
+end
+menu_handler.set_print_timestamps = function(bool)
+    _data.print_timestamps = bool
+end
 function ctrl_left_click_handler(vx,vy,event)
     add_track_annotation(vx,vy)
 end
@@ -542,7 +573,9 @@ function if_ready(f)
 end
 
 function on_tick()
-    msg.info('time in tick:',mp.get_property_native('time-pos'))
+    if _data.print_timestamps then
+        msg.info('time in tick:',mp.get_property_native('time-pos'))
+    end
 end
 
 function on_frame(name,data)
@@ -563,5 +596,6 @@ _gui:add_key_binding("HOME", "home_handler", if_ready(home_handler))
 _gui:add_key_binding("n", "name_handler", if_ready(name_handler))
 _gui:add_key_binding(">", "playlist_next", if_ready(menu_handler.playlist_next))
 _gui:add_key_binding("<", "playlist_previous", if_ready(menu_handler.playlist_previous))
+_gui:add_key_binding("g", "testing", if_ready(menu_handler.testing))
 _gui:add_time_binding(function(time) _data.time = math.floor(time*1000) end)
---mp.register_event("tick", on_tick)
+mp.register_event("tick", on_tick)
