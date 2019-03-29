@@ -226,7 +226,7 @@ function goto_last_track_position()
         local goto_time = _data.last_track_time_pos
         if not goto_time then return end
         local old_delta = _data.last_track_time_delta or 0
-        local new_delta = _data.time_deltas.time_deltas[_data.file] or 0
+        local new_delta = _data.time_deltas:get_time_delta(_data.file)
         local goto_time = goto_time - old_delta + new_delta
         if goto_time > 0. then
             mp.set_property('time-pos',goto_time/1000)
