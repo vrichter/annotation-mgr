@@ -115,6 +115,7 @@ function Tf:serialize()
 end
 function Tf:deserialize(string)
     local result = Tf:new()
+    if not string then return result end
     local data = json.decode(string)
     if data then
         for key, value in pairs(data) do
