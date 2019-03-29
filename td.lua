@@ -11,6 +11,11 @@ function Td:new(o)
     o.time_deltas = {}
     return o
 end
+function Td:get_time_delta(name, other_name)
+    local a = self.time_deltas[name] or 0
+    local b = self.time_deltas[other_name] or 0
+    return a - b
+end
 function Td:add_time_delta(name, td)
     self.time_deltas[name] = td
 end
