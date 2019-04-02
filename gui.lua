@@ -44,7 +44,7 @@ function Gui:new(o)
     mp.observe_property("dheight", native, bind(o,'observe_video_h'))
     mp.observe_property("osd-width", native, bind(o,'observe_osd_w'))
     mp.observe_property("osd-height", native, bind(o,'observe_osd_h'))
-    mp.observe_property("time-pos", string, bind(o,'observe_time'))
+    mp.observe_property("time-pos", native, bind(o,'observe_time'))
     mp.register_event("tick", bind(o,'on_tick'))
     return o
 end
@@ -328,8 +328,8 @@ function Gui:add_mouse_binding(key, name, functor)
     mp.add_key_binding(key,name,self:mouse_binding_wrapper(functor))
 end
 
-function Gui:add_key_binding(key, name, functor)
-    mp.add_key_binding(key,name,functor)
+function Gui:add_key_binding(key, name, functor, flags)
+    mp.add_key_binding(key,name,functor,flags)
 end
 
 function Gui:add_observer(name, callback)

@@ -10,6 +10,7 @@ function Annotations:new(o)
     o.data = {}
     o.start_time = nil
     o.end_time = nil
+    o.fuzzy_max = 10 -- ms
     return o
 end
 function Annotations:add(time,value,nextvalue)
@@ -56,8 +57,33 @@ end
 function Annotations:is_end_time(time)
     return (not (self.end_time == nil)) and (self.end_time == time)
 end
+function Annotations:fuzzy_time(time)
+    if self.data[time] then
+        return time
+    else -- return neighbours time if not too far
+        local n = self:find_neighbours(time)
+        result = nil
+        if n then
+            if n.next and n.next.time_delta then
+                result = n.next
+            end
+            if n.previous and n.previous.time_delta then
+                if (not result) or (result.time_delta > n.previous.time_delta) then
+                    result = n.previous
+                end
+            end
+        end
+        if result then
+            if result.time_delta < self.fuzzy_max then
+                return result.time
+            end
+        end
+    end
+end
 function Annotations:remove(time)
     assert(time)
+    local time = self:fuzzy_time(time)
+    if not time then return end
     --msg.info('before',dump(self.data))
     --table.remove(self.data,time)
     self.data[time]=nil

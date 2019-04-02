@@ -381,11 +381,14 @@ function set_end(annotation, time, vx, vy)
         end
         if (time >= last) then
             annotation:set_end_time(time)
+            msg.info('setting endpoint:',time)
             changed = true
-        end
-        if (time <= first) then
+        elseif (time <= first) then
             annotation:set_start_time(time)
+            msg.info('setting startpoint:',time)
             changed = true
+        else
+            msg.warn('cannot set endpoint in the middle:',first/1000 .. ' < ' .. time/1000 .. ' < ' .. last/1000)
         end
     end
     return changed
@@ -556,14 +559,14 @@ function escape_handler()
 end
 function end_handler()
     local next = find_next_neighbour_annotation(_data.time+opts.jump_next_min_delta_ms, _gui.marked_track)
-    if next then
+    if next and next.time then
         msg.info('now: '.. _data.time .. ' goto next annotation: ' .. next.time)
         mp.set_property('time-pos',next.time/1000)
     end
 end
 function home_handler()
     local previous = find_previous_neighbour_annotation(_data.time-opts.jump_next_min_delta_ms, _gui.marked_track)
-    if previous then
+    if previous and previous.time then
         msg.info('now: ' .. _data.time .. ' goto previous annotation: ' .. previous.time)
         mp.set_property('time-pos',previous.time/1000)
     end
@@ -582,6 +585,23 @@ end
 function set_current_track_time()
     _data.last_track_time_pos = _data.time
     _data.last_track_time_delta = _data.time_deltas.time_deltas[_data.file]
+end
+function move_handler(addx, addy, addr)
+    if _gui.marked_track then
+        local time = _data.time
+        local p = _gui.marked_track:position(time)
+        if p.position then
+            local new_rad = nil
+            if p.position.rad then
+                new_rad = p.position.rad + addr
+            elseif addr ~= 0 then
+                new_rad = addr
+            end
+            _gui.marked_track:add_annotation(time, p.position.x+addx, p.position.y+addy, new_rad, p.position.frame_id)
+            _data.tracks_changed = true
+            _gui.modified = true
+        end
+    end
 end
 function if_ready(f)
     return function(...)
@@ -612,8 +632,14 @@ _gui:add_mouse_binding("Shift+MBTN_LEFT", "shift_left_click_handler", if_ready(s
 --_gui:add_mouse_binding("Shift+MBTN_RIGHT", "shift_right_click_handler", if_ready(shift_right_click_handler))
 _gui:add_key_binding("Ctrl+s", "ctrl_s_handler", if_ready(ctrl_s_handler))
 _gui:add_key_binding("ESC", "escape_handler", if_ready(escape_handler))
-_gui:add_key_binding("END", "end_handler", if_ready(end_handler))
-_gui:add_key_binding("HOME", "home_handler", if_ready(home_handler))
+_gui:add_key_binding("END", "end_handler", if_ready(end_handler), {repeatable=true})
+_gui:add_key_binding("HOME", "home_handler", if_ready(home_handler), {repeatable=true})
+_gui:add_key_binding("Alt+UP", "move_handler_up", if_ready(function() move_handler(0,-1,0) end), {repeatable=true})
+_gui:add_key_binding("Alt+DOWN", "move_handler_down", if_ready(function() move_handler(0,1,0) end), {repeatable=true})
+_gui:add_key_binding("Alt+LEFT", "move_handler_left", if_ready(function() move_handler(-1,0,0) end), {repeatable=true})
+_gui:add_key_binding("Alt+RIGHT", "move_handler_right", if_ready(function() move_handler(1,0,0) end), {repeatable=true})
+_gui:add_key_binding("Alt+q", "move_handler_rotate_left", if_ready(function() move_handler(0,0,-math.pi/64) end), {repeatable=true})
+_gui:add_key_binding("Alt+e", "move_handler_rotate_right", if_ready(function() move_handler(0,0,math.pi/64) end), {repeatable=true})
 _gui:add_key_binding("n", "name_handler", if_ready(name_handler))
 _gui:add_key_binding(">", "playlist_next", if_ready(menu_handler.playlist_next))
 _gui:add_key_binding("<", "playlist_previous", if_ready(menu_handler.playlist_previous))
