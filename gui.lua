@@ -247,9 +247,7 @@ function Gui:transform_and_draw_track(ass, track, time, tf, tf_target, ref_size,
     elseif type == "person" then
         color.primary = opts.track_pos_color_person
     end
-    msg.error(dump_pp(position))
     local transformed_position = tf:transform_to(position,tf_target)
-    msg.error(dump_pp(transformed_position))
     local px, py = self:tr_track_to_px(transformed_position)
     self:render_track_position(ass, px, py, transformed_position.rad, size, color, track.person_id)
 end

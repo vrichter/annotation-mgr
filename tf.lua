@@ -43,10 +43,6 @@ local function transform_2d_pose(pose, tf)
         local x_ax = homogenize(tfp * matrix {{ 1 }, { 0 }, { 1 }})
         local y_ax = homogenize(tfp * matrix {{ 0 }, { 1 }, { 1 }})
         local  dir = homogenize(tfp * matrix {{ math.cos(rad) }, { math.sin(rad) }, { 1 }})
-        msg.error('xd:',x_ax)
-        msg.error('xd:',y_ax)
-        msg.error(' c:',center)
-        msg.error('od:',dir)
         --
         local direction = dir_point - center
         local rotation = math.atan2(direction[2][1],direction[1][1])
@@ -59,12 +55,6 @@ local function transform_2d_pose(pose, tf)
         local point = tf * original_point
         local dir_point = tf * original_dir_point
         local direction = dir_point - point
-        msg.error('op:',original_point)
-        msg.error('od:',original_dir_point)
-        msg.error('of:',original_dir_point-original_point)
-        msg.error('np:',point)
-        msg.error('nd:',dir_point)
-        msg.error('nf:',direction)
         local rotation = math.atan2(direction[2][1],direction[1][1])
         return {x = point[1][1], y = point[2][1], rad = rotation}
     end
@@ -75,7 +65,7 @@ function Tf:transform_to_home(track)
     assert(home_tf)
     local result = transform_2d_pose(track, home_tf)
     result.frame_id = 'Home'
-    msg.error('\n---',dump(track),'\n---',dump(result),'\n---', dump(transform_2d_pose(result, matrix.invert(home_tf))))
+    --msg.error('\n---',dump(track),'\n---',dump(result),'\n---', dump(transform_2d_pose(result, matrix.invert(home_tf))))
     return result
 end
 function Tf:transform_to(track, frame_id)
@@ -91,11 +81,11 @@ function Tf:transform_to(track, frame_id)
         from = track.frame_id
     end
     if self.transformations[frame_id] then
-        msg.info('transforming track',dump(track),'from "' .. from .. '" to "'..frame_id..'"')
+        --msg.info('transforming track',dump(track),'from "' .. from .. '" to "'..frame_id..'"')
         local result = transform_2d_pose(track,self.transformations[frame_id] * home)
-        msg.info('result:',dump(result))
+        --msg.info('result:',dump(result))
         result.frame_id = frame_id
-        msg.error('\n---',dump(track),(180/math.pi*track.rad),'\n---',dump(result),(180/math.pi*result.rad))
+        --msg.error('\n---',dump(track),(180/math.pi*track.rad),'\n---',dump(result),(180/math.pi*result.rad))
         return result
     end
     assert(false)
