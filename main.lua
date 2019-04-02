@@ -399,10 +399,21 @@ function toggle_end(track)
       end
     return false
 end
-function find_next_neighbour_annotation(time)
+function find_next_neighbour_annotation(time, track)
+    local time = time+1 -- after now
+    -- next in track
+    if track then
+        local n = track:find_neighbours(time)
+        if n then
+            return n.next
+        else
+            return nil
+        end
+    end
+    -- overall next
     local min_next = nil
     for key, value in pairs(_data.tracks) do
-        local n = value:find_neighbours(time+1) -- after now
+        local n = value:find_neighbours(time)
         if n and n.next and n.next.time then
             if not min_next then
                 min_next = n.next
@@ -413,7 +424,17 @@ function find_next_neighbour_annotation(time)
     end
     return min_next
 end
-function find_previous_neighbour_annotation(time)
+function find_previous_neighbour_annotation(time, track)
+    -- next in track
+    if track then
+        local n = track:find_neighbours(time)
+        if n then
+            return n.previous
+        else
+            return nil
+        end
+    end
+    -- overall next
     local max_previous = nil
     for key, value in pairs(_data.tracks) do
         local n = value:find_neighbours(time)
@@ -534,14 +555,14 @@ function escape_handler()
     _gui.modified = true
 end
 function end_handler()
-    local next = find_next_neighbour_annotation(_data.time+opts.jump_next_min_delta_ms)
+    local next = find_next_neighbour_annotation(_data.time+opts.jump_next_min_delta_ms, _gui.marked_track)
     if next then
         msg.info('now: '.. _data.time .. ' goto next annotation: ' .. next.time)
         mp.set_property('time-pos',next.time/1000)
     end
 end
 function home_handler()
-    local previous = find_previous_neighbour_annotation(_data.time-opts.jump_next_min_delta_ms)
+    local previous = find_previous_neighbour_annotation(_data.time-opts.jump_next_min_delta_ms, _gui.marked_track)
     if previous then
         msg.info('now: ' .. _data.time .. ' goto previous annotation: ' .. previous.time)
         mp.set_property('time-pos',previous.time/1000)
