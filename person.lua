@@ -4,6 +4,8 @@ local msg = require 'msg'
 local utils = require 'mp.utils'
 local json = require 'dependencies/json'
 
+local tau = 2 * math.pi
+
 local Person = {}
 function Person:new(o)
     o = o or {}
@@ -51,27 +53,70 @@ function Person:create_from_tracks(annotations, tf)
     end
     return persons
 end
+local function normalize_rotation(rad, min, max)
+    -- rotate full circles until angle is between min and max
+    local rotation = rad
+    while rotation < -min do 
+        rotation = rotation + tau
+    end
+    while rotation > max do 
+        rotation = rotation - tau
+    end
+    return rotation
+end
+local function normalize_rotation_positive(rad)
+    return normalize_rotation(rad,0,2*tau)
+end
+local function normalize_rotation_pi(rad)
+    return normalize_rotation(rad,-math.pi,math.pi)
+end
+local function normalize_to_short_angle(x,ref)
+    return normalize_rotation(x,ref-math.pi, ref+math.pi)
+end
+local function calculate_mean_rotation(x)
+    if #x == 0 then return nil end
+    local sum = 0.
+    local ref = nil
+    for i = 1, #x do
+        if not ref then ref = x[i] end
+        sum = sum + normalize_to_short_angle(x[i],ref)
+    end
+    return sum/#x
+end
+local function calculate_mean(x)
+    if #x == 0 then return nil end
+    local sum = 0.
+    for i = 1, #x do
+        sum = sum + x[i]
+    end
+    return sum/#x
+end
 local function calculate_mean_position(positions)
-    local x = 0.
-    local y = 0.
-    local rad = 0.
-    local count = 0.
+    local x = {}
+    local y = {}
+    local rad = {}
     local frame_id = nil
-    msg.error("calculate mean rotation:")
     for k, position in pairs(positions) do
         if frame_id then
             assert(frame_id == position.frame_id)
         else
             frame_id = position.frame_id
         end
-        x = x + position.x
-        y = y + position.y
-        rad = rad + position.rad
-        msg.error(" --",position.rad)
-        count = count +1
+        if position.x then
+            table.insert(x,position.x)
+        end
+        if position.y then
+            table.insert(y,position.y)
+        end
+        if position.rad then
+            table.insert(rad,position.rad)
+        end
     end
-    msg.error("--",rad/count)
-    return {x = x/count, y = y/count, rad = rad/count, frame_id = frame_id}
+    if #x > 0 then
+        return {x = calculate_mean(x), y = calculate_mean(y) , rad = calculate_mean_rotation(rad), frame_id = frame_id}
+    else
+        return nil
+    end
 end
 function Person:position(time)
     assert(time)
@@ -81,13 +126,10 @@ function Person:position(time)
         if position.position then
             local home_position = self.tf:transform_to_home(position.position)
             --local home_position = self.tf:transform_to(position.position, 'Home')
-            msg.error('rotation from',position.position.frame_id,'to Home:',position.position.rad*(180/math.pi),' -> ',home_position.rad*(180/math.pi))
             table.insert(positions,home_position)
         end
     end
-    local result = { position = calculate_mean_position(positions), interpolated = true, endpoint = false }
-    msg.error(dump_pp(result))
-    return result
+    return { position = calculate_mean_position(positions), interpolated = true, endpoint = false }
 end
 
 return Person
