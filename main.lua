@@ -25,25 +25,31 @@ local debug = require 'debug'
 
 -- local data
 _data = {
+    --- file and loading
     path = "",
     dir = "",
     file = "",
     ready = false,
     time = 0,
-    tracks = {},
-    fixpoints = {},
-    tracks_changed = false,
-    tf = transform:new(),
-    transformable = {},
-    show_transformable = {},
-    time_deltas = time_deltas:new(),
-    persons = person:new(),
-    show_persons = false,
-    annotate_tracks = true,
     last_track_time_pos = nil,
     last_track_time_delta = nil,
     selected_audio = {},
-    print_timestamps = false
+    --- annotations
+    tracks = {},
+    fixpoints = {},
+    tracks_changed = false,
+    --- static annotations
+    transformable = {},
+    persons = person:new(),
+    --- meta information
+    tf = transform:new(),
+    time_deltas = time_deltas:new(),
+    --- gui config
+    show_transformable = {},
+    show_persons = false,
+    print_timestamps = false,
+    --- state
+    annotate_tracks = true
 }
 _gui = Gui:new()
 
