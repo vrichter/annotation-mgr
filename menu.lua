@@ -115,16 +115,15 @@ function Menu:menu_action(handler, vx, vy)
 
 
     -- setting fix points in map
-    table.insert(menu_list.context_menu, {"cascade", "Fix point", "fixpoint_menu", "", "", false})
-    menu_list.fixpoint_menu = {
-        {"command", "Add fix point", "",
-        function () handler.add_fixpoint(vx, vy, self.name_dialog()) end,
-        "", false},
-        {"command", "Remove fix point", "",
-        function () handler.remove_fixpoint(vx, vy) end,
-        "", false}
-    }
-    
+    --table.insert(menu_list.context_menu, {"cascade", "Fix point", "fixpoint_menu", "", "", false})
+    --menu_list.fixpoint_menu = {
+    --    {"command", "Add fix point", "",
+    --    function () handler.add_fixpoint(vx, vy, self.name_dialog()) end,
+    --    "", false},
+    --    {"command", "Remove fix point", "",
+    --    function () handler.remove_fixpoint(vx, vy) end,
+    --    "", false}
+    --}
 
     -- create menu
     engine.createMenu(menu_list, 'context_menu', -1, -1, 'tk')
