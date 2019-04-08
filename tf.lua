@@ -59,6 +59,12 @@ local function transform_2d_pose(pose, tf)
         return {x = point[1][1], y = point[2][1], rad = rotation}
     end
 end
+function Tf:get(frame_id)
+    return self.transformations[frame_id]
+end
+function Tf:get_all()
+    return self.transformations
+end
 function Tf:transform_to_home(track)
     assert(self.transformations[track.frame_id])
     local home_tf = matrix.invert(self.transformations[track.frame_id])
@@ -95,6 +101,13 @@ function Tf:add_transformation(name, tf)
 end
 function Tf:remove_transformation(name)
     self.transformations[name] = nil
+end
+function Tf:rotation_from_points(x_center, y_center, x_dir, y_dir)
+    local xd = x_dir-x_center
+    local yd = y_dir-y_center
+    -- y points down in video coordinates
+    local rot = math.atan2(yd,xd)
+    return rot
 end
 function Tf:serialize()
     local data = {}

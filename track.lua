@@ -117,14 +117,68 @@ function Track:serialize(do_not_encode)
             annotations = annotations
         }
     end
-    if do_not_encode then return data else return json.encode(data) end
+    if do_not_encode then return data else return Track.pretty_encode_track(data) end
 end
 function Track:serialize_tracks(tracks, do_not_encode)
     local data = {}
     for key, value in pairs(tracks) do
         table.insert(data,value:serialize(true))
     end
-    if do_not_encode then return data else return json.encode(data) end
+    if do_not_encode then return data else return Track.pretty_encode_tracks(data) end
+end
+local function json_element(name, value)
+    local result = '"'..name..'": '
+    if type(value) == 'string' then
+        result = result .. '"' .. value .. '"'
+    else
+        result = result .. value
+    end
+    return result
+end
+local function if_exists(name, data, prefix, suffix)
+    if data[name] then
+        return prefix .. json_element(name, data[name]) .. suffix
+    else
+        return ""
+    end
+end
+function Track.pretty_encode_annotation(annotation)
+    local result = '{ ' .. 
+        if_exists('time', annotation, '', ', ') .. 
+        if_exists('x', annotation, '', ', ') .. 
+        if_exists('y', annotation, '', ', ') .. 
+        if_exists('rad', annotation, '', ', ') .. 
+        if_exists('frame_id', annotation, '', ', ')
+    return string.gsub(result, ', $', ' }')
+end
+function Track.pretty_encode_annotations(annotations, indent)
+    local result = '['
+    for k,v in pairs(annotations) do
+        result = result .. '\n' .. indent .. Track.pretty_encode_annotation(v) .. ','
+    end
+    result = string.gsub(result, ',$', '\n') .. indent .. ']'
+    return result
+end
+function Track.pretty_encode_track(track, indent)
+    local indent = indent or '    '
+    local result = '{\n' .. 
+        if_exists('id', track, indent, ',\n') ..
+        if_exists('person_id', track, indent, ',\n') ..
+        if_exists('start_time', track, indent, ',\n') ..
+        if_exists('end_time', track, indent, ',\n') ..
+        indent .. '"annotations": ' .. Track.pretty_encode_annotations(track.annotations, indent..'    ') .. 
+        '\n'..indent..'}'
+    return result
+end
+function Track.pretty_encode_tracks(tracks, indent)
+    local indent = indent or '    '
+    local result = '['
+    for k,v in pairs(tracks) do
+        result = result .. '\n' .. indent .. Track.pretty_encode_track(v,indent..'    ') .. ','
+    end
+    result = string.gsub(result, ',$', '\n') .. indent .. ']'
+    return result
+   
 end
 function Track:deserialize_tracks(data)
     result = {}

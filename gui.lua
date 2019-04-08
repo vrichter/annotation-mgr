@@ -120,40 +120,16 @@ function Gui:update_data(data)
 end
 
 -- transformations
-function Gui:tr_px_to_video(x,y)
+function Gui:px_to_video(x,y)
     -- first remove padding, then scale with video scale
     return (x-self:property('video-x'))/self:property('video-scale'), (y-self:property('video-y'))/self:property('video-scale')
 end
-function Gui:tr_video_to_px(x,y)
+function Gui:video_to_px(x,y)
     -- scale with video scale, then add padding
     return x*self:property('video-scale')+self:property('video-x'), y*self:property('video-scale')+self:property('video-y')
 end
-function Gui:tr_video_to_px_scale(x)
+function Gui:video_to_px_scale(x)
     return x*self:property('video-scale')
-end
-function Gui:tr_track_to_px(track)
-    return self:tr_video_to_px(track.x, track.y)
-end
-function Gui:tr_rotation_from_points_rad(x_center, y_center, x_dir, y_dir)
-    local xd = x_dir-x_center
-    local yd = y_dir-y_center
-    -- y points down in video coordinates
-    local rot = math.atan2(yd,xd)
-    msg.error(rot)
-    return rot
-end
-function Gui:tr_track_to_rotation_rad(rad)
-    return track.rad
-end
-function Gui:tr_track_to_rotation_deg(rad)
-    if rad then
-        return -1*rad*180/math.pi 
-    else 
-        return nil 
-    end
-end
-function Gui:calculate_dist(ax,ay,bx,by)
-    return math.sqrt(math.abs((bx-ax)^2-(by-ay)^2))
 end
 
 -- render functions
@@ -189,95 +165,6 @@ function Gui:asstools_create_color_from_hex(color)
     return result
 end
 
-function Gui:render_track_position(ass, px, py, rad, size, color, person_id)
-    ass:new_event()
-    ass:append('{\\org('..px..','..py..')}')
-    if rad then
-        ass:append('{\\frz'..self:tr_track_to_rotation_deg(rad)..'}')
-        ass:append(self:asstools_create_color_from_hex(color))
-        ass:pos(0,0)
-        ass:draw_start()
-        --ass:move_to(px-size/2,py)
-        --ass:line_to(px,py-2*size) 
-        --ass:line_to(px+size/2,py)
-        ass:move_to(px,py-size/2)
-        ass:line_to(px+2*size,py) 
-        ass:line_to(px,py+size/2)
-        ass:draw_stop()
-    else
-        ass:append(self:asstools_create_color_from_hex(color))
-        ass:pos(0,0)
-        ass:draw_start()
-        ass:move_to(px-size/2,py-size/2)
-        ass:line_to(px-size/2,py+size/2) 
-        ass:line_to(px+size/2,py+size/2) 
-        ass:line_to(px+size/2,py-size/2) 
-        ass:draw_stop()
-    end
-    -- draw name next to position
-    if person_id then
-        ass:new_event()
-        ass:append('{\\pos('..px..','..py..')}')
-        ass:append('{\\fs10}')
-        ass:append(person_id)
-    end
-end
-
-function Gui:transform_and_draw_track(ass, track, time, tf, tf_target, ref_size, type)
-    local track_position = track:position(time)
-    if (not track_position) or (not track_position.position) then return end
-    local position = track_position.position
-    local interpolated = track_position.interpolated
-    local track_endpoint = track_position.endpoint
-    local size = ref_size
-    local color = {}
-    color.border = opts.track_pos_color_border
-    if self.marked_track and (track.id == self.marked_track.id) then
-        color.primary = opts.track_pos_color_selected
-    elseif interpolated then
-        color.primary = opts.track_pos_color_interpolated
-    elseif track_endpoint then
-        color.primary = opts.track_pos_color_endpoint
-    else
-        color.primary = opts.track_pos_color_annotation
-    end
-    if type == "transformed_annotation" then
-        size = size/2
-        color.border = opts.track_pos_color_border_alt
-    elseif type == "person" then
-        color.primary = opts.track_pos_color_person
-    end
-    local transformed_position = tf:transform_to(position,tf_target)
-    local px, py = self:tr_track_to_px(transformed_position)
-    self:render_track_position(ass, px, py, transformed_position.rad, size, color, track.person_id)
-end
-
-function Gui:draw_track_positions(ass,data)
-    local tracks = data.tracks
-    local tf = data.tf
-    local tf_target = data.file
-    local size = self:tr_video_to_px_scale(opts.position_size)/2
-    local time = self:property('time-pos')
-    if not time then return end
-    time = math.floor(time*1000)
-    for key, track in pairs(tracks) do
-        self:transform_and_draw_track(ass, track, time, tf, tf_target, size, "main_annotation")
-    end
-    for name, render in pairs(data.show_transformable) do
-        if render and (data.transformable[name]) then
-            for key, track in pairs(data.transformable[name]) do
-               self:transform_and_draw_track(ass, track, time, tf, tf_target, size, "transformed_annotation")
-            end
-        end
-    end
-    if _data.show_persons then
-        for k, person in pairs(_data.persons) do
-            self:transform_and_draw_track(ass, person, time, tf, tf_target, size, "person")
-        end
-    end
-    ass:draw_stop()
-end
-
 function Gui:render_text_only(text)
     local ass = assdraw.ass_new()
     ass:pos(0,0)
@@ -290,18 +177,18 @@ function Gui:render_clean()
     mp.set_osd_ass(self:property('osd-width'), self:property('osd-height'), ass.text)
 end
 
-function Gui:render_tracks(data)
+function Gui:render_state(handler)
     local ass = assdraw.ass_new()
-    self:draw_track_positions(ass,data)
+    handler.render(ass, self)
     mp.set_osd_ass(self:property('osd-width'), self:property('osd-height'), ass.text)
 end
 
 function Gui:render_gui()
     if self.data then
-        if not self.data.ready then
+        if not self.data.is_ready() then
            self:render_text_only("not ready yet. please wait a moment.")
         else
-            self:render_tracks(self.data)
+            self:render_state(self.data)
         end
     else
         self:render_clean()
@@ -318,18 +205,22 @@ end
 
 function Gui:mouse_binding_wrapper(f)
     return function(...)
-        local vx, vy = _gui:tr_px_to_video(mp.get_mouse_pos())
+        local vx, vy = _gui:px_to_video(mp.get_mouse_pos())
         f(vx, vy, ...)
     end
 end
 
 
-function Gui:add_mouse_binding(key, name, functor)
-    mp.add_key_binding(key,name,self:mouse_binding_wrapper(functor))
+function Gui:add_mouse_binding(key, name, functor, flags)
+    mp.add_key_binding(key,name,self:mouse_binding_wrapper(functor), flags)
 end
 
 function Gui:add_key_binding(key, name, functor, flags)
     mp.add_key_binding(key,name,functor,flags)
+end
+
+function Gui:remove_key_binding(name)
+    mp.remove_key_binding(name)
 end
 
 function Gui:add_observer(name, callback)

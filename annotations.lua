@@ -96,6 +96,12 @@ end
 function Annotations:get_entry(time)
     return self.data[time]
 end
+function Annotations:is_empty()
+    for k,v in pairs(self.data) do
+        return false
+    end
+    return true
+end
 function Annotations:get_time_endpoints()
     local first = nil
     local last = nil
@@ -109,7 +115,6 @@ function Annotations:get_time_endpoints()
     end
     return first, last
 end
-
 function Annotations:find_neighbours(time)
     assert(time)
     local less_dist = nil
