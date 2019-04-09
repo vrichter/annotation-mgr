@@ -1,3 +1,12 @@
+local opts = {
+    annotation_suffix = "-tracking-annotation.json",
+    next_annotation_max_dist = 25,
+    jump_next_min_delta_ms = 10,
+}
+(require 'mp.options').read_options(opts,"track-annotation")
+
+
+
 local Track = require "track"
 local dump = require "dump"
 local msg = require 'msg'
@@ -20,7 +29,6 @@ function TrackAnnotation:new(o)
     self.show_persons = false
     self.renderer = render:new()
     self.main = {}
-    self.menu = {}
     return o
 end
 --- interface
@@ -58,12 +66,12 @@ function TrackAnnotation:save_annotations()
         return
     end
     local document = Track:serialize_tracks(self.tracks)
-    if document == "[]" then
+    if document == "[    ]" then
         msg.info("not saving empty annotation")
     else
         local filename = self.main.data('path')
         msg.info('saving annotation for file:', filename)
-        self.main.save_json_to_file(filename .. self.main.opt('annotation_suffix'), document)
+        self.main.save_json_to_file(filename .. opts.annotation_suffix, document)
     end
     self.tracks_changed = false
 end
@@ -85,7 +93,7 @@ function TrackAnnotation:load_annotations()
     assert(self.tracks_changed == false)
     local filename = self.main.data('path')
     msg.info('loading annotation for file:', filename)
-    self.tracks_changed, self.tracks = ensure_frames_set(Track:deserialize_tracks(self.main.read_string_from_file(filename .. self.main.opt('annotation_suffix'))))
+    self.tracks_changed, self.tracks = ensure_frames_set(Track:deserialize_tracks(self.main.read_string_from_file(filename .. opts.annotation_suffix)))
 end
 function TrackAnnotation:load_transformable_annotations()
     local tf_new = {}
@@ -93,7 +101,7 @@ function TrackAnnotation:load_transformable_annotations()
     local td = self.main.data('time_deltas')
     local current_frame = self.main.data('file')
     local current_dir = self.main.data('dir')
-    local suffix = self.main.opt('annotation_suffix')
+    local suffix = opts.annotation_suffix
     if tf:get(current_frame) then -- only when current file transformable
         for key, value in pairs(tf:get_all()) do
             local filename = current_dir .. '/' .. key .. suffix
@@ -150,13 +158,10 @@ function TrackAnnotation:add_track(vx,vy)
     self.tracks_changed = true
     self.main.notify()
 end
-local function calculate_dist(ax,ay,bx,by)
-    return math.sqrt(math.abs((bx-ax)^2-(by-ay)^2))
-end
 function TrackAnnotation:find_annotation_next_to(vx,vy,max_dist)
     assert(vx)
     assert(vy)
-    local max_dist = max_dist or self.main.opt('next_annotation_max_dist')
+    local max_dist = max_dist or opts.next_annotation_max_dist
     assert(max_dist)
     local next = nil
     local min_dist = nil
@@ -166,7 +171,7 @@ function TrackAnnotation:find_annotation_next_to(vx,vy,max_dist)
         local track_pos = (track:position(time)).position
         if not (track_pos == nil) then
             local transformed = tf:transform_to(track_pos, _data.file)
-            local dist = calculate_dist(vx, vy, transformed.x, transformed.y)
+            local dist = ut.calculate_dist(vx, vy, transformed.x, transformed.y)
             if min_dist == nil or dist < min_dist then
                 min_dist = dist
                 next = track
@@ -325,7 +330,7 @@ function TrackAnnotation:deselect()
 end
 function TrackAnnotation:goto_next_annotation()
     local time = self.main.data('time')
-    local min_delta = self.main.opt('jump_next_min_delta_ms')
+    local min_delta = opts.jump_next_min_delta_ms
     local next = self:find_next_neighbour_annotation(time+min_delta, self.marked_track)
     if next and next.time then
         msg.info('now: '.. time .. ' goto next annotation: ' .. next.time)
@@ -334,7 +339,7 @@ function TrackAnnotation:goto_next_annotation()
 end
 function TrackAnnotation:goto_previous_annotation()
     local time = self.main.data('time')
-    local min_delta = self.main.opt('jump_next_min_delta_ms')
+    local min_delta = opts.jump_next_min_delta_ms
     local previous = self:find_previous_neighbour_annotation(time-min_delta, self.marked_track)
     if previous and previous.time then
         msg.info('now: ' .. time .. ' goto previous annotation: ' .. previous.time)
