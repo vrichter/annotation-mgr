@@ -84,14 +84,7 @@ function Annotations:remove(time)
     assert(time)
     local time = self:fuzzy_time(time)
     if not time then return end
-    --msg.info('before',dump(self.data))
-    --table.remove(self.data,time)
     self.data[time]=nil
-    --msg.info('after',dump(self.data))
-    -- update min/max
-    if (time == self.min) or (time == self.max) then
-        self.update_min_max()
-    end
 end
 function Annotations:get_entry(time)
     return self.data[time]
