@@ -118,7 +118,7 @@ local function calculate_mean_position(positions)
         return nil
     end
 end
-function Person:position(time)
+function Person:position(time, target_frame_id)
     assert(time)
     local positions = {}
     for k,track in pairs(self.tracks) do
@@ -129,7 +129,11 @@ function Person:position(time)
             table.insert(positions,home_position)
         end
     end
-    return { position = calculate_mean_position(positions), interpolated = true, endpoint = false }
+    local result = {interpolated = true, endpoint = false, position = calculate_mean_position(positions)}
+    if result.position and target_frame_id then
+        result.position = self.tf:transform_to(result.position, target_frame_id)
+    end
+    return result
 end
 
 return Person
