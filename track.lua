@@ -2,6 +2,7 @@ local Annotations = require "annotations"
 local dump = require "dump"
 local msg = require 'msg'
 local utils = require 'mp.utils'
+local ut = require 'utils'
 local uuid = require 'dependencies/uuid'
 local json = require 'dependencies/json'
 
@@ -153,7 +154,11 @@ function Track.pretty_encode_annotation(annotation)
 end
 function Track.pretty_encode_annotations(annotations, indent)
     local result = '['
+    local timed_annotations = {}
     for k,v in pairs(annotations) do
+        timed_annotations[v.time] = v
+    end
+    for k,v in ut.pairs_by_keys(timed_annotations) do
         result = result .. '\n' .. indent .. Track.pretty_encode_annotation(v) .. ','
     end
     result = string.gsub(result, ',$', '\n') .. indent .. ']'
