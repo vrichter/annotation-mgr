@@ -3,6 +3,7 @@ local opts = {
     track_annotation_suffix = "-tracking-annotation.json",
     next_annotation_max_dist = 25,
     reference_time_frame = "",
+    roles = {"member", "speaker", "addressee"}
 }
 (require 'mp.options').read_options(opts,"group-annotation")
 
@@ -170,7 +171,7 @@ function GroupAnnotation:find_or_create_group_of(time, person)
     local group = self:find_group_of(time, person)
     if not group then
         group = Group:new()
-        group:add_person(time, person.person_id)
+        group:add_person(time, person.person_id, opts.roles[1])
     end
     return group
 end
@@ -191,7 +192,7 @@ function GroupAnnotation:move_person_to_group(time, group, person_id)
             removed = true
         end
     end
-    group:add_person(time,person_id)
+    group:add_person(time,person_id,opts.roles[1])
     self.groups[group.id] = group
     self.groups_changed = true
     self.main.notify()
@@ -278,6 +279,26 @@ function GroupAnnotation.create_menu_actions(handler, vx, vy)
     local next_person = handler:find_person_next_to(vx,vy)
     if next_person then
         table.insert(menu_list.context_menu, {"command", "Mark person", "MBTN_RIGHT", function () handler:mark_person(next_person) end, "", false, false})
+    end
+    if next_person then
+        local time = handler.main.data('time')
+        local group = handler:find_group_of(time, next_person)
+        if group then
+            local role = group:get_role(time, next_person.person_id)
+            msg.error('role:',role)
+            assert(role)
+            table.insert(menu_list.context_menu, {"cascade", "Person Role", "role_menu", "", "", false})
+            local role_menu = {}
+            for k,v in pairs(opts.roles) do
+                table.insert(role_menu, {"command", v, "", 
+                    function () 
+                        group:add_person(time, next_person.person_id, v)
+                        handler.groups_changed = true
+                        handler.main.notify() 
+                    end, "", (role==v), false})
+            end
+            menu_list.role_menu = role_menu
+        end
     end
     return menu_list
 end

@@ -18,7 +18,8 @@ function Group:new(o)
     o.id = uuid.new()
     return o
 end
-function Group:add_person(time,person_id)
+function Group:add_person(time,person_id,role)
+    local role = role or "default"
     assert(time)
     assert(person_id)
     local group = self:get_persons(time)
@@ -28,7 +29,7 @@ function Group:add_person(time,person_id)
             new_group[k]=v
         end
     end
-    new_group[person_id] = "member"
+    new_group[person_id] = role
     self:set_group(time, new_group)
 end
 function Group:set_group(time, group)
@@ -73,6 +74,15 @@ function Group:has_person(time, person_id)
     else
         return nil
     end
+end
+function Group:get_role(time, person_id)
+    local persons = self:get_persons(time)
+    local role = nil
+    msg.error(time, person_id, dump_pp(persons))
+    if persons and persons.annotation then
+        role = persons.annotation[person_id]
+    end
+    return role
 end
 function Group:get_persons(time)
     assert(time)

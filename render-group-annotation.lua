@@ -6,9 +6,9 @@ local opts = {
     color_person_selected = '#ffffff33',
     color_single_person   = '#ffffff33',
     color_group_member    = '#377eb833',
-    color_group_speaker   = '#ff7f0033',
+    color_group_speaker   = '#e41a1c33',
     color_group_addressee = '#4daf4a33',
-    color_border_selected = '#e41a1ff',
+    color_border_selected = '#e41a133',
     color_border_default  = '#00000033',
 }
 (require 'mp.options').read_options(opts,"render-groups")
@@ -103,7 +103,7 @@ local function create_back_line(px,py,rad)
     else
         local result = {}
         table.insert(result,{x = px - opts.position_size * math.cos(rad-math.pi/2) * opts.group_line_factor, y = py - opts.position_size * math.sin(rad-math.pi/2) * opts.group_line_factor})
-        table.insert(result,{x = px + opts.position_size * math.cos(rad), y = py + opts.position_size * math.sin(rad)})
+        --table.insert(result,{x = px + opts.position_size * math.cos(rad), y = py + opts.position_size * math.sin(rad)})
         table.insert(result,{x = px + opts.position_size * math.cos(rad-math.pi/2) * opts.group_line_factor, y = py + opts.position_size * math.sin(rad-math.pi/2) * opts.group_line_factor})
         return result
     end
