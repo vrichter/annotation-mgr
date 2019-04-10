@@ -101,6 +101,36 @@ function Group:is_empty()
     end
     return true
 end
+local function contatins_all(a,b)
+    for k,v in pairs(a) do
+        if (not b[k]) or (b[k] ~= v) then
+            return false
+        end
+    end
+    return true
+end
+local function same_annotations(a,b)
+    if (not a) or (not b) then 
+        return false
+    elseif contatins_all(a,b) and contatins_all(b,a) then 
+        return true
+    else
+        return false
+    end
+end
+function Group:clean_entries()
+    local entries = {}
+    local previous = nil
+    for k,v in ut.pairs_by_keys(self.data) do
+        if same_annotations(previous,v) then
+            -- skip redundant groups
+        else
+            entries[k] = v
+        end
+        previous = v
+    end
+    self.data = entries
+end
 function Group:update_endpoints()
     local min = nil
     local max = nil
@@ -215,7 +245,6 @@ function Group:deserialize_groups(data)
             group.id = parsed_group.id
             group.start_time = parsed_group.start_time
             group.end_time = parsed_group.end_time
-            msg.error(dump_pp(parsed_group))
             for key, parsed_annotation in pairs(parsed_group.annotations) do
                 local annotation = {}
                 for k,member in pairs(parsed_annotation.persons) do 
