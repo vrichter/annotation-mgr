@@ -1,12 +1,9 @@
 -- config
 local opts = {
     person_tracking_file = "person-tracking-results.json",
-    annotation_suffix = "-tracking-annotation.json",
     tf_filename = "transformations.json",
     td_filename = "time-deltas.json",
-    jump_next_min_delta_ms = 10,
-    starting = 'track_annotation',
-    next_annotation_max_dist = 25
+    starting = 'track_annotation'
 }
 (require 'mp.options').read_options(opts,"annotation")
 
@@ -23,6 +20,7 @@ local time_deltas = require 'td'
 local json = require 'dependencies/json'
 local person = require 'person'
 local handler_track_annotation = require 'track-annotation'
+local handler_group_annotation = require 'group-annotation'
 
 local debug = require 'debug'
 
@@ -152,6 +150,13 @@ main_handler.open_menu = function(vx, vy, append)
         table.insert(menu_list.context_menu, {"command", "Hide timestamps", "", function () _data.print_timestamps = false end, "", false, false})
     else
         table.insert(menu_list.context_menu, {"command", "Print timestamps", "", function () _data.print_timestamps = true end, "", false, false})
+    end
+    -- change state
+    table.insert(menu_list.context_menu, {"cascade", "Change State", "statelist", "", "", false})
+    menu_list.statelist = {}
+    for k,v in pairs(_data.handlers) do
+        table.insert(menu_list.statelist,
+        {"command", v:name(), "", function () main_handler.set_state(k)  end, "", false, false})
     end
     menu_inst:append(menu_list)
     menu_inst:append(append)
@@ -286,6 +291,7 @@ main_handler.set_state = function(name)
             add_bindings(next:name(), next:get_actions())
             _data.handler_current = next
         end
+        main_handler.notify()
     end
 end
 
@@ -318,6 +324,7 @@ _gui:add_time_binding(main_handler.on_time_change)
 mp.register_event("tick", main_handler.on_tick)
 
 _data.handlers = { 
-    track_annotation = handler_track_annotation:new()
+    track_annotation = handler_track_annotation:new(),
+    group_annotation = handler_group_annotation:new()
 }
 main_handler.set_state(opts.starting)

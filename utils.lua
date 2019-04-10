@@ -19,5 +19,13 @@ end
 function Utils.calculate_dist(ax,ay,bx,by)
     return math.sqrt(math.abs((bx-ax)^2-(by-ay)^2))
 end
+function Utils.len(data)
+    if not data then return -1 end
+    local len = 0
+    for k,v in pairs(data) do
+        len = len + 1
+    end
+    return len
+end
 
 return Utils

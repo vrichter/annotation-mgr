@@ -13,17 +13,10 @@ function Annotations:new(o)
     o.fuzzy_max = 10 -- ms
     return o
 end
-function Annotations:add(time,value,nextvalue)
-    --msg.info('time',time,'value',dump(value))
+function Annotations:add(time,value)
     assert(time)
     assert(value)
-    if not self.data[time] then
-        self.data[time] = value
-    else
-        for k,v in pairs(value) do
-            self.data[time][k] = v
-        end
-    end
+    self.data[time] = value
 end
 function Annotations:get_start_time()
     return self.start_time
