@@ -22,13 +22,14 @@ function Group:add_person(time,person_id)
     assert(time)
     assert(person_id)
     local group = self:get_persons(time)
-    if not group or not group.annotation then
-        group = {}
-    else
-        group = group.annotation
+    local new_group = {}
+    if group and group.annotation then
+        for k,v in pairs(group.annotation) do
+            new_group[k]=v
+        end
     end
-    group[person_id] = "member"
-    self:set_group(time, group)
+    new_group[person_id] = "member"
+    self:set_group(time, new_group)
 end
 function Group:set_group(time, group)
     if not group or not next(group) then -- remove
@@ -36,6 +37,7 @@ function Group:set_group(time, group)
     else -- new point
         Group.add(self,time,group)
     end
+    self:clean_entries()
     self:update_endpoints()
 end
 function Group:remove_person(time, person_id)
