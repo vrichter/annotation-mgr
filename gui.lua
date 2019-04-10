@@ -133,11 +133,14 @@ function Gui:video_to_px_scale(x)
 end
 
 -- render functions
-function Gui:asstools_hex_rgb2bgr(hex)
-    if not hex then return nil, nil end
-    hex = hex:match("^#?([1-9a-fA-F]+)$")
-    if not hex then return nil, nil end
-    assert((string.len(hex) == 6) or (string.len(hex) == 8))
+function Gui:asstools_hex_rgb2bgr(hex_in)
+    if not hex_in then return nil, nil end
+    local pattern = "^#?([0-9a-fA-F]+)$"
+    hex = hex_in:match(pattern)
+    if not hex or string.len(hex) < 6 then 
+        msg.error('could not match',hex_in,'to',pattern)
+        return nil, nil 
+    end
     local color = string.sub(hex,5,6) .. string.sub(hex,3,4) .. string.sub(hex,1,2)
     local alpha = nil
     if string.len(hex) == 8 then
