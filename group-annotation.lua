@@ -219,13 +219,11 @@ function GroupAnnotation:select_or_move_to_group(vx, vy)
 end
 function GroupAnnotation:find_annotation(time, direction, group_id)
     if group_id then
-        return self.groups[group_id]:find_neighbours(time)[direction]
+        return self.groups[group_id]:find_neighbours(time+add)[direction]
     else
         local min_neighbour = nil
-        msg.error(group_id, dump_pp(self.groups))
         for k,v in pairs(self.groups) do
             local neighbour = v:find_neighbours(time)[direction]
-            msg.error(dump_pp())
             if neighbour and neighbour.time_delta then
                 if (not min_neighbour) or min_neighbour.time_delta > neighbour.time_delta then
                     min_neighbour = neighbour
@@ -235,14 +233,23 @@ function GroupAnnotation:find_annotation(time, direction, group_id)
         return min_neighbour
     end
 end
+function GroupAnnotation:find_annotation_fuzzy(time, direction, group_id)
+    local result = self:find_annotation(time, direction, group_id)
+    if (not result) or (not result.time) or (result.time == time) then
+        -- try again with a small time delta
+        local add = 1
+        if direction == 'previous' then add = add * -1 end
+        result = self:find_annotation(time+add, direction, group_id)
+    end
+    return result
+end
 function GroupAnnotation:goto_annotation(direction)
     local time = self.main.data('time')
     local group_id = nil
     if self.marked_person then
         group_id = GroupAnnotation:find_group_of(time, self.marked_person)
     end
-    local annotation = self:find_annotation(time, direction, group_id)
-    msg.error(time,direction,group_id,dump(annotation))
+    local annotation = self:find_annotation_fuzzy(time, direction, group_id)
     if annotation and annotation.time then
         self.main.goto_track_position_ms(annotation.time)
     end
