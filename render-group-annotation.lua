@@ -1,11 +1,13 @@
 -- config
 local opts = {
     position_size = 50,
-    color_group = '#ffffff',
+    group_line_factor = 0.25,
+    color_group = '#ffff33',
     color_person_selected = '#8f262666',
     color_single_person = '#ffffff',
     color_group_member = '#5b268f66',
     color_border_default = '#000000',
+    alpha_group = '{\\alpha&H80&}',
 }
 (require 'mp.options').read_options(opts,"render-groups")
 
@@ -15,6 +17,7 @@ local utils = require 'mp.utils'
 local msg = require 'msg'
 local dump = require 'dump'
 local tr = require 'render-track-annotation'
+local tf = require 'tf'
 
 local RenderGroupAnnotation = {}
 function RenderGroupAnnotation:new(o)
@@ -24,14 +27,36 @@ function RenderGroupAnnotation:new(o)
     o.tr = tr:new()
     return o
 end
+local function mean_point(points)
+    local x = 0
+    local y = 0
+    local c = 0
+    for k,v in pairs(points) do
+        x = x + v.x
+        y = y + v.y
+        c = c + 1
+    end
+    return {x = x/c, y = y/c}
+end
+local function sort_points(points)
+    local center = mean_point(points)
+    local tf = tf:new()
+    table.sort(points, 
+        function(a,b)
+            return tf:rotation_from_points(center.x,center.y,a.x,a.y) < tf:rotation_from_points(center.x,center.y,b.x,b.y)
+        end
+    )
+    return points
+end
 function RenderGroupAnnotation:render_group_polygon(ass, points, color, gui)
     if not points[2] then return end -- need at least two points for a polygon
     ass:new_event()
     ass:append(gui:asstools_create_color_from_hex(color))
+    ass:append(opts.alpha_group)
     ass:pos(0,0)
     ass:draw_start()
     local first = true
-    for i,point in pairs(points) do
+    for i,point in pairs(sort_points(points)) do
         if first then
             ass:move_to(point.x,point.y)
             first = false
@@ -62,14 +87,24 @@ local function get_color_from_type(type, marked)
         assert(false)
     end
 end
+local function create_back_line(px,py,rad)
+    if not rad then
+        return {{ x = px, y = py }}
+    else
+        local result = {}
+        table.insert(result,{x = px - opts.position_size * math.cos(rad-math.pi/2) * opts.group_line_factor, y = py - opts.position_size * math.sin(rad-math.pi/2) * opts.group_line_factor})
+        table.insert(result,{x = px + opts.position_size * math.cos(rad-math.pi/2) * opts.group_line_factor, y = py + opts.position_size * math.sin(rad-math.pi/2) * opts.group_line_factor})
+        return result
+    end
+end
 function RenderGroupAnnotation:render_track_position(ass, position, color, id, gui)
     local size = gui:video_to_px_scale(opts.position_size)/2
     if position.position then
         local px, py = gui:video_to_px(position.position.x, position.position.y)
         self.tr:render_track_position(ass, px, py, position.position.rad, size, color, id, gui)
-        return { x = px, y = py }
+        return create_back_line(px, py, position.position.rad)
     else
-        return { x = 0, y = 0 }
+        return {{ x = 0, y = 0 }}
     end
 end
 function RenderGroupAnnotation:draw_group(ass, group, time, persons, frame_id, marked, gui)
@@ -81,7 +116,9 @@ function RenderGroupAnnotation:draw_group(ass, group, time, persons, frame_id, m
     for k, position in pairs(positions) do
         local person_color = get_color_from_type(position.type, (marked and (marked.person_id == position.person.person_id)))
         local person_points = self:render_track_position(ass, position, person_color,position.person.person_id, gui)
-        table.insert(points,person_points)
+        for i,p in pairs(person_points) do
+            table.insert(points,p)
+        end
         table.insert(members,position.person.person_id)
     end
     self:render_group_polygon(ass, points, color, gui)    
