@@ -2,12 +2,14 @@
 local opts = {
     position_size = 50,
     group_line_factor = 0.25,
-    color_group = '#ffff33',
-    color_person_selected = '#8f262666',
-    color_single_person = '#ffffff',
-    color_group_member = '#5b268f66',
-    color_border_default = '#000000',
-    alpha_group = '{\\alpha&H80&}',
+    color_group           = '#ffffffaa',
+    color_person_selected = '#ffffff33',
+    color_single_person   = '#ffffff33',
+    color_group_member    = '#377eb833',
+    color_group_speaker   = '#ff7f0033',
+    color_group_addressee = '#4daf4a33',
+    color_border_selected = '#e41a1ff',
+    color_border_default  = '#00000033',
 }
 (require 'mp.options').read_options(opts,"render-groups")
 
@@ -52,7 +54,6 @@ function RenderGroupAnnotation:render_group_polygon(ass, points, color, gui)
     if not points[2] then return end -- need at least two points for a polygon
     ass:new_event()
     ass:append(gui:asstools_create_color_from_hex(color))
-    ass:append(opts.alpha_group)
     ass:pos(0,0)
     ass:draw_start()
     local first = true
@@ -77,15 +78,24 @@ function RenderGroupAnnotation:get_group_member_positions(time, group, persons, 
     return positions
 end
 local function get_color_from_type(type, marked)
+    local result = {}
     if marked then
-        return { primary = opts.color_person_selected, border = opts.color_border_default }
-    elseif type == 'nongroup' then
-        return { primary = opts.color_single_person, border = opts.color_border_default }
+        result.border = opts.color_border_selected
+    else
+        result.border = opts.color_border_default
+    end
+    if type == 'nongroup' then
+        result.primary = opts.color_single_person
     elseif type == 'member' then
-        return { primary = opts.color_group_member, border = opts.color_border_default }
+        result.primary = opts.color_group_member
+    elseif type == 'speaker' then
+        result.primary = opts.color_group_speaker
+    elseif type == 'addressee' then
+        result.primary = opts.color_group_addressee
     else
         assert(false)
     end
+    return result
 end
 local function create_back_line(px,py,rad)
     if not rad then
@@ -93,6 +103,7 @@ local function create_back_line(px,py,rad)
     else
         local result = {}
         table.insert(result,{x = px - opts.position_size * math.cos(rad-math.pi/2) * opts.group_line_factor, y = py - opts.position_size * math.sin(rad-math.pi/2) * opts.group_line_factor})
+        table.insert(result,{x = px + opts.position_size * math.cos(rad), y = py + opts.position_size * math.sin(rad)})
         table.insert(result,{x = px + opts.position_size * math.cos(rad-math.pi/2) * opts.group_line_factor, y = py + opts.position_size * math.sin(rad-math.pi/2) * opts.group_line_factor})
         return result
     end
@@ -109,7 +120,6 @@ function RenderGroupAnnotation:render_track_position(ass, position, color, id, g
 end
 function RenderGroupAnnotation:draw_group(ass, group, time, persons, frame_id, marked, gui)
     local positions = self:get_group_member_positions(time, group, persons, frame_id)
-    local color = opts.color_group
     local members = {}
     local points = {}
     local track_renderer = tr:new()
@@ -121,7 +131,7 @@ function RenderGroupAnnotation:draw_group(ass, group, time, persons, frame_id, m
         end
         table.insert(members,position.person.person_id)
     end
-    self:render_group_polygon(ass, points, color, gui)    
+    self:render_group_polygon(ass, points, {primary = opts.color_group, border = opts.color_border_default}, gui)    
     return members
 end
 function RenderGroupAnnotation:draw_groups(group, time, ass, gui)
