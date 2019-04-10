@@ -83,7 +83,7 @@ function Group:get_persons(time)
         annotation = result.previous
     end
     if result.next and result.next.annotation then
-        if (not annotation) or (result.next == time) then
+        if (not annotation) or (result.next.time == time) then
             annotation = result.next
         end
     end
