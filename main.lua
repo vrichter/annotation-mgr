@@ -68,9 +68,9 @@ function observe_path(name, data)
     end
     wait_for_video_to_start()
     goto_last_track_position()
-    msg.error('memory usage:',collectgarbage('count')..'kbyte')
+    msg.info('memory usage:',collectgarbage('count')..'kbyte')
     collectgarbage()
-    msg.error('memory usage:',collectgarbage('count')..'kbyte')
+    msg.info('memory usage:',collectgarbage('count')..'kbyte')
     _data.ready = true
 end
 
