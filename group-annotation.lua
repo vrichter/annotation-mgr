@@ -255,12 +255,35 @@ function GroupAnnotation:goto_annotation(direction)
         self.main.goto_track_position_ms(annotation.time)
     end
 end
+function GroupAnnotation:set_person_next_role(vx, vy)
+    local time = self.main.data('time')
+    local next_person = self:find_person_next_to(vx,vy)
+    if not next_person then return end
+    local group = self:find_group_of(time, next_person)
+    if not group then return end
+    local role = group:get_role(time, next_person.person_id)
+    if not role then return end
+    local next_role = opts.roles 
+    for k,v in pairs(opts.roles) do
+        if v == role then
+            if opts.roles[k+1] then
+                next_role = opts.roles[k + 1]
+            else
+                next_role = opts.roles[1]
+            end
+        end
+    end
+    group:add_person(time, next_person.person_id, next_role)
+    self.groups_changed = true
+    self.main.notify()
+end
 function GroupAnnotation:open_menu(vx, vy)
     self.main.open_menu(vx,vy,self.create_menu_actions(self,vx,vy))
 end
 function GroupAnnotation.create_actions(handler)
     return {
         {type='mouse', event="Ctrl+MBTN_RIGHT", name="remove_person_from_group", callback=function(...) handler:remove_person_from_group(...); mp.command('frame-step') end},
+        {type='mouse', event="Ctrl+MBTN_LEFT",  name="set_next_role",            callback=function(...) handler:set_person_next_role(...); end},
         {type='mouse', event="MBTN_LEFT",       name="select_or_move_to_group",  callback=function(...) handler:select_or_move_to_group(...) end},
         {type='mouse', event="MBTN_RIGHT",      name="menu",                     callback=function(...) handler:open_menu(...) end},
         {type='key',   event="Ctrl+s",          name="save",                     callback=function(...) handler:save_annotations(...) end },
