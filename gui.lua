@@ -121,8 +121,16 @@ end
 
 -- transformations
 function Gui:px_to_video(x,y)
-    -- first remove padding, then scale with video scale
-    return (x-self:property('video-x'))/self:property('video-scale'), (y-self:property('video-y'))/self:property('video-scale')
+    local vx = self:property('video-x')
+    local vy = self:property('video-y')
+    local vs = self:property('video-scale')
+    if vx and vy and vs then
+        -- first remove padding, then scale with video scale
+        return (x-vx)/vs, (y-vy)/vs
+    else
+        msg.warn('could not get required screen info: video-x = ',vx,'video-y = ',y,'video-scale = ',vs)
+        return nil, nil
+    end
 end
 function Gui:video_to_px(x,y)
     -- scale with video scale, then add padding
@@ -209,17 +217,30 @@ end
 function Gui:mouse_binding_wrapper(f)
     return function(...)
         local vx, vy = _gui:px_to_video(mp.get_mouse_pos())
-        f(vx, vy, ...)
+        if vx and vy then
+            f(vx, vy, ...)
+        else
+            msg.warn('could not get mouse position in video coordinates')
+        end
     end
 end
 
+function Gui:if_ready_wrapper(f)
+    return function(...)
+        if self.data.is_ready() then
+            f(vx, vy, ...)
+        else
+            msg.ward('ignoring callback while not ready')
+        end
+    end
+end
 
 function Gui:add_mouse_binding(key, name, functor, flags)
-    mp.add_key_binding(key,name,self:mouse_binding_wrapper(functor), flags)
+    mp.add_key_binding(key,name,self:if_ready_wrapper(self:mouse_binding_wrapper(functor), flags))
 end
 
 function Gui:add_key_binding(key, name, functor, flags)
-    mp.add_key_binding(key,name,functor,flags)
+    mp.add_key_binding(key,name,self:if_ready_wrapper(functor),flags)
 end
 
 function Gui:remove_key_binding(name)
