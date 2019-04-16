@@ -33,6 +33,7 @@ function Group:add_person(time,person_id,role)
     self:set_group(time, new_group)
 end
 function Group:set_group(time, group)
+    assert(time)
     if not group or not next(group) then -- remove
         Group.remove(self,time)
     else -- new point

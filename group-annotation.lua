@@ -277,6 +277,11 @@ function GroupAnnotation:set_person_next_role(vx, vy)
     self.groups_changed = true
     self.main.notify()
 end
+function GroupAnnotation:remove_annotation(time, group_id)
+    self.groups[group_id]:set_group(time,nil)
+    self.groups_changed = true
+    self.main.notify()
+end
 function GroupAnnotation:open_menu(vx, vy)
     self.main.open_menu(vx,vy,self.create_menu_actions(self,vx,vy))
 end
@@ -307,6 +312,7 @@ function GroupAnnotation.create_menu_actions(handler, vx, vy)
         local time = handler.main.data('time')
         local group = handler:find_group_of(time, next_person)
         if group then
+            -- switch role menu
             local role = group:get_role(time, next_person.person_id)
             msg.error('role:',role)
             assert(role)
@@ -321,6 +327,8 @@ function GroupAnnotation.create_menu_actions(handler, vx, vy)
                     end, "", (role==v), false})
             end
             menu_list.role_menu = role_menu
+            -- remove current group annotation
+            table.insert(menu_list.context_menu, {"command", "Remove Group Annotation", "MBTN_RIGHT", function () handler:remove_annotation(time, group.id) end, "", false, false})
         end
     end
     return menu_list
