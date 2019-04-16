@@ -27,5 +27,18 @@ function Utils.len(data)
     end
     return len
 end
+-- thanks to https://gist.github.com/tylerneylon/81333721109155b2d244
+function Utils.clone(obj, seen)
+    -- Handle non-tables and previously-seen tables.
+    if type(obj) ~= 'table' then return obj end
+    if seen and seen[obj] then return seen[obj] end
+    
+    -- New table; mark it as seen an copy recursively.
+    local s = seen or {}
+    local res = setmetatable({}, getmetatable(obj))
+    s[obj] = res
+    for k, v in pairs(obj) do res[Utils.clone(k, s)] = Utils.clone(v, s) end
+    return res
+end
 
 return Utils

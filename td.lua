@@ -1,6 +1,7 @@
 local dump = require 'dump'
 local msg = require 'msg'
 local json = require 'dependencies/json'
+local ut = require 'utils'
 
 local Td = {}
 function Td:new(o)
@@ -49,6 +50,8 @@ function Td:adapt_group_times(groups, from_frame, to_frame)
         return tracks
     end
     local delta = self.time_deltas[to_frame] - self.time_deltas[from_frame]
+    msg.error('adapting group times delta =',delta)
+    local groups = ut.clone(groups)
     for i, group in pairs(groups) do
         add_if_exists(group, 'start_time', delta)
         add_if_exists(group, 'end_time', delta)
