@@ -21,6 +21,7 @@ local json = require 'dependencies/json'
 local person = require 'person'
 local handler_track_annotation = require 'track-annotation'
 local handler_group_annotation = require 'group-annotation'
+local handler_export_annotation = require 'export-annotation'
 
 local debug = require 'debug'
 
@@ -325,6 +326,7 @@ mp.register_event("tick", main_handler.on_tick)
 
 _data.handlers = { 
     track_annotation = handler_track_annotation:new(),
-    group_annotation = handler_group_annotation:new()
+    group_annotation = handler_group_annotation:new(),
+    export_annotation = handler_export_annotation:new()
 }
 main_handler.set_state(opts.starting)
