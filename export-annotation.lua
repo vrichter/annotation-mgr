@@ -95,6 +95,7 @@ function ExportAnnotation:after_file_change()
         if opts.auto_export ~= "false" then
             self:create_annotations()
             self:dump_annotations()
+            self:dump_role_annotations()
             self.main.exit()
         end
     end
