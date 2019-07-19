@@ -79,7 +79,6 @@ end
 function Group:get_role(time, person_id)
     local persons = self:get_persons(time)
     local role = nil
-    msg.error(time, person_id, dump_pp(persons))
     if persons and persons.annotation then
         role = persons.annotation[person_id]
     end

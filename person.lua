@@ -118,6 +118,9 @@ local function calculate_mean_position(positions)
         return nil
     end
 end
+function Person.calculate_mean_position(positions)
+    return calculate_mean_position(positions)
+end
 function Person:position(time, target_frame_id)
     assert(time)
     local positions = {}

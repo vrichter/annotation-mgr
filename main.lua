@@ -267,6 +267,9 @@ main_handler.playlist_previous = function()
     set_current_track_time()
     mp.command('playlist-prev')
 end
+main_handler.exit = function()
+    mp.command("quit")
+end
 main_handler.on_tick = function()
     if _data.print_timestamps then
         msg.info('time in tick:',mp.get_property_native('time-pos'))
