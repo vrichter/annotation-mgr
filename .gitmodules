@@ -1,4 +1,4 @@
-[submodule "mpvcontextmenu"]
+[submodule "dependencies/mpvcontextmenu"]
 	path = dependencies/mpvcontextmenu
 	url = https://gitlab.com/carmanaught/mpvcontextmenu.git
 [submodule "base"]
