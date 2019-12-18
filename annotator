@@ -1,0 +1,2 @@
+#!/bin/bash
+mpv --msg-module --audio-file-auto=all --script main.lua "$@"

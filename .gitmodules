@@ -1,0 +1,15 @@
+[submodule "mpvcontextmenu"]
+	path = mpvcontextmenu
+	url = ./dependencies/mpvcontextmenu
+[submodule "base"]
+	path = base
+	url = ./dependencies/fformation/base/
+[submodule "gco"]
+	path = gco
+	url = ./dependencies/fformation/gco/
+[submodule "hungarian"]
+	path = hungarian
+	url = ./dependencies/munkres/hungarian/
+[submodule "luwra"]
+	path = luwra
+	url = ./dependencies/munkres/luwra/

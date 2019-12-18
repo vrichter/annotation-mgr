@@ -1,0 +1,77 @@
+From e4105a6e01011a43b3e4c5990ca54d72801246eb Mon Sep 17 00:00:00 2001
+From: Viktor Richter <vrichter@posteo.de>
+Date: Wed, 18 Dec 2019 14:17:44 +0100
+Subject: [PATCH] minor adaptations
+
+---
+ menu-builder-tk.tcl |  1 +
+ menu-engine.lua     | 11 ++++++++---
+ patch.applied       |  0
+ 3 files changed, 9 insertions(+), 3 deletions(-)
+ create mode 100644 patch.applied
+
+diff --git a/menu-builder-tk.tcl b/menu-builder-tk.tcl
+index 2dea9c1..bf9f385 100644
+--- a/menu-builder-tk.tcl
++++ b/menu-builder-tk.tcl
+@@ -103,6 +103,7 @@ proc makeLabel {curTable accelLabel} {
+ # mVal(6) = Item State (Check/Unchecked, etc)
+ # mVal(7) = Item Disable (True/False)
+ foreach {mVal(1) mVal(2) mVal(3) mVal(4) mVal(5) mVal(6) mVal(7)} $argList {
++    #puts "---$mVal(1) -#- $mVal(2) -#- $mVal(3) -#- $mVal(4) -#- $mVal(5) -#- $mVal(6) -#- $mVal(7)"
+     if {$first} {
+         set pos_x $mVal(1)
+         set pos_y $mVal(2)
+diff --git a/menu-engine.lua b/menu-engine.lua
+index 107c007..6d20bcf 100644
+--- a/menu-engine.lua
++++ b/menu-engine.lua
+@@ -29,6 +29,9 @@
+  ***************************************************************
+ --]]
+ 
++local dump = require "dump"
++local msg = require "msg"
++
+ local utils = require "mp.utils"
+ local verbose = false  -- true -> Dump console messages also without -v
+ local function info(x) mp.msg[verbose and "info" or "verbose"](x) end
+@@ -39,13 +42,13 @@ local function mpdebug(x) mp.msg.info(x) end -- For printing other debug without
+ local interpreter = {}
+ local menuscript = {}
+ 
+-interpreter["tk"] = "wish";  -- tclsh/wish/full-path
+-menuscript["tk"] = mp.find_config_file("scripts/menu-builder-tk.tcl")
++interpreter["tk"] = "tclsh";  -- tclsh/wish/full-path
++menuscript["tk"] = "./dependencies/mpvcontextmenu/menu-builder-tk.tcl"
+ 
+ -- The js file is provided without an extension so that mpv doesn't try to load it
+ -- (allowing for mpv with MuJS support).
+ interpreter["gtk"] = "gjs";  -- lua/full-path
+-menuscript["gtk"] = mp.find_config_file("scripts/menu-builder-gtk-js")
++menuscript["gtk"] = "menu-builder-gtk-js"
+ 
+ 
+ -- Set some constant values. These should match what's used with the menu definitions.
+@@ -206,6 +209,7 @@ local function doMenu(menuList, menuName, x, y, menuPaths, menuIndexes)
+     local cmdArgs = {interpreter[menuBuilder], menuscript[menuBuilder], argList}
+ 
+     -- retVal gets the return value from the subprocess
++    --msg.error(string.gsub(cmdArgs[3],string.char(31), "\\x1f"))
+     local retVal = utils.subprocess({
+         args = cmdArgs,
+         cancellable = true
+@@ -219,6 +223,7 @@ local function doMenu(menuList, menuName, x, y, menuPaths, menuIndexes)
+ 
+     info("ret: " .. retVal.stdout)
+     -- Parse the return value as JSON and assign the JSON values.
++    --msg.error(dump_pp(retVal.stdout))
+     local response = utils.parse_json(retVal.stdout, true)
+     response.x = tonumber(response.x)
+     response.y = tonumber(response.y)
+diff --git a/patch.applied b/patch.applied
+new file mode 100644
+index 0000000..e69de29
+-- 
+2.17.1
+
