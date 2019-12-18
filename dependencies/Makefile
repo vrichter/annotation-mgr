@@ -1,4 +1,4 @@
-all: mpvcontextmenu fformation munkres
+all: mpvcontextmenu/patch.applied fformation munkres
 	make -C munkres
 	make -C fformation
 

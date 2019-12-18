@@ -2,6 +2,28 @@
 
 A set of lua scripts to allow annotation of movements, groups, and roles in videos with the lua api of the mpv player.
 
+![screenshot](media/screen.jpg)
+
+## Set-Up
+
+Clone the project recursively with all dependencies:
+
+```> git clone --recursive https://github.com/vrichter/annotation-mgr.git```
+
+Change into the directory:
+
+```> cd annotation-mgr```
+
+Set-up dependencies with make:
+
+```> make```
+
+Run the application:
+
+*ATTENTION: the application will expect config files and create annotation data next to the opened videos*
+
+```./annotator <path-to-video-file>```
+
 ## Dependencies
 
 The following lua dependencies are forked and copied into the `dependencies` folder:

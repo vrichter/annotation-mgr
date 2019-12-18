@@ -23,5 +23,5 @@ all: ../../libfformation-gco_lua.so
 clean:
 	make -C base clean
 	make -C gco clean
-	rm -rf base gco install
+	rm -rf install
 	rm -f ../../libfformation-gco_lua.so
