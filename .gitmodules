@@ -1,15 +1,15 @@
 [submodule "mpvcontextmenu"]
 	path = mpvcontextmenu
-	url = ./dependencies/mpvcontextmenu
+	url = https://gitlab.com/carmanaught/mpvcontextmenu.git
 [submodule "base"]
 	path = base
-	url = ./dependencies/fformation/base/
+	url = https://github.com/vrichter/fformation.git
 [submodule "gco"]
 	path = gco
-	url = ./dependencies/fformation/gco/
+	url = https://github.com/vrichter/fformation-gco.git
 [submodule "hungarian"]
 	path = hungarian
-	url = ./dependencies/munkres/hungarian/
+	url = https://github.com/RoboJackets/hungarian.git
 [submodule "luwra"]
 	path = luwra
-	url = ./dependencies/munkres/luwra/
+	url = https://github.com/vapourismo/luwra.git
