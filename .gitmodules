@@ -5,7 +5,7 @@
 	path = dependencies/fformation/base
 	url = https://github.com/vrichter/fformation.git
 [submodule "dependencies/fformation/gco"]
-	path = dependencies/fformaition/gco
+	path = dependencies/fformation/gco
 	url = https://github.com/vrichter/fformation-gco.git
 [submodule "dependencies/munkres/hungarian"]
 	path = dependencies/munkres/hungarian
