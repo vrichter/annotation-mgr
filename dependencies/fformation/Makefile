@@ -21,7 +21,7 @@ install/lib/libfformation-gco_lua.so: gco/Makefile
 all: ../../libfformation-gco_lua.so
 
 clean:
-	make -C base clean
-	make -C gco clean
+	cd base && git reset --hard && git clean -f -d
+	cd gco && git reset --hard && git clean -f -d
 	rm -rf install
 	rm -f ../../libfformation-gco_lua.so
