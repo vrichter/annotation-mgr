@@ -189,10 +189,10 @@ function load_config_from_dir(dir)
     mp.set_property_native('pause',pause_state)
 end
 function wait_for_video_to_start()
-    local last = os.date('%s')
+    local last = os.date('%S')
     local count = 0
     while not mp.get_property_native('time-pos') do
-        local now = os.date('%s')
+        local now = os.date('%S')
         if now ~= last then
             msg.warn('waiting for video to start')
             last = now
