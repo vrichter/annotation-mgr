@@ -21,7 +21,12 @@ local json = require 'dependencies/json'
 local person = require 'person'
 local handler_track_annotation = require 'track-annotation'
 local handler_group_annotation = require 'group-annotation'
-local handler_export_annotation = require 'export-annotation'
+local f=io.open("libfformation-gco_lua.so","r")
+local handler_export_annotation = nil
+if f~=nil then 
+    io.close(f)
+    handler_export_annotation = require 'export-annotation' 
+end
 
 local debug = require 'debug'
 
@@ -323,9 +328,11 @@ _gui:add_key_binding("g", "testing", main_handler.testing)
 _gui:add_time_binding(main_handler.on_time_change)
 mp.register_event("tick", main_handler.on_tick)
 
-_data.handlers = { 
+_data.handlers = {
     track_annotation = handler_track_annotation:new(),
-    group_annotation = handler_group_annotation:new(),
-    export_annotation = handler_export_annotation:new()
+    group_annotation = handler_group_annotation:new()
 }
+if handler_export_annotation then 
+    _data.handlers.export_annotation = handler_export_annotation:new() 
+end
 main_handler.set_state(opts.starting)
