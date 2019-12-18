@@ -78,12 +78,8 @@ end
 --- main handler
 main_handler = {}
 main_handler.check_file_exists = function (filename)
-    local info = utils.file_info(filename)
-    if (not info) or (not info['is_file']) then
-        msg.info('file "' .. filename .. '" not found or is not regular file.')
-        return false
-    end
-    return true
+    local f=io.open(filename,"r")
+    if f~=nil then io.close(f) return true else return false end
 end
 main_handler.read_string_from_file = function(filename)
     if not (main_handler.check_file_exists(filename)) then return nil end
